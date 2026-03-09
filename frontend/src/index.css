@@ -1,0 +1,160 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-red: #FF3B30;
+  --color-brand-yellow: #FFD60A;
+  --color-brand-blue: #0A84FF;
+  --color-brand-bg: #000000;
+  --color-brand-surface: rgba(0, 0, 0, 0.6);
+  --color-brand-surface-light: rgba(255, 255, 255, 0.05);
+
+  --font-heading: 'Oswald', 'Bebas Neue', ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-body: 'Roboto', 'Montserrat', ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 349 100% 59%;
+    /* #FF3B30 */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 47 100% 52%;
+    /* #FFD60A */
+    --secondary-foreground: 0 0% 0%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
+
+    --accent: 211 100% 52%;
+    /* #0A84FF */
+    --accent-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --destructive: 349 100% 59%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 47 100% 52%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    @apply font-body bg-[url('https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2605&auto=format&fit=crop')] bg-cover bg-fixed bg-center min-h-screen;
+  }
+
+  /* Add dark gradient overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.95) 100%);
+    z-index: -1;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading tracking-wide;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-brand-surface backdrop-blur-md border border-brand-surface-light rounded-xl shadow-2xl;
+  }
+
+  .glass-card {
+    @apply bg-black/40 backdrop-blur-sm border border-white/10 rounded-3xl transition-all duration-300;
+  }
+
+  .neon-text-yellow {
+    @apply text-brand-yellow font-bold;
+    text-shadow: 0 0 8px rgba(255, 214, 10, 0.4);
+  }
+
+  .neon-text-red {
+    @apply text-brand-red font-bold;
+    text-shadow: 0 0 8px rgba(255, 59, 48, 0.4);
+  }
+
+  .neon-text-blue {
+    @apply text-brand-blue font-bold;
+    text-shadow: 0 0 8px rgba(10, 132, 255, 0.4);
+  }
+
+  .neon-border-hover {
+    @apply border border-white/10 transition-colors duration-300;
+  }
+
+  .neon-border-hover:hover {
+    @apply border-brand-blue/50;
+    box-shadow: 0 0 15px rgba(10, 132, 255, 0.2);
+  }
+
+  .primary-button {
+    @apply bg-gradient-to-r from-brand-red to-red-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:-translate-y-1 font-heading tracking-wider;
+  }
+
+  .primary-button:hover {
+    box-shadow: 0 0 20px rgba(255, 59, 48, 0.4);
+  }
+
+  .secondary-button {
+    @apply bg-gradient-to-r from-brand-blue to-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:-translate-y-1 font-heading tracking-wider;
+  }
+
+  .secondary-button:hover {
+    box-shadow: 0 0 20px rgba(10, 132, 255, 0.4);
+  }
+}
