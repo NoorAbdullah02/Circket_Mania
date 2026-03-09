@@ -1091,12 +1091,12 @@ export default function AdminDashboard() {
                                 e.preventDefault();
                                 updatePlayerMutation.mutate({ ...editingPlayer, isAdmin: editingPlayer.userRole === 'admin' });
                             }} className="space-y-6">
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2 lg:col-span-2">
                                         <Label>Full Name</Label>
                                         <Input type="text" className="bg-black/50" value={editingPlayer.name || ''} onChange={(e) => setEditingPlayer({ ...editingPlayer, name: e.target.value })} />
                                     </div>
-                                    <div className="space-y-2 lg:col-span-2">
+                                    <div className="space-y-2">
                                         <Label>User System Role</Label>
                                         <select
                                             className="w-full h-10 px-3 bg-black/50 border border-white/10 rounded-md text-white text-sm"
@@ -1108,43 +1108,7 @@ export default function AdminDashboard() {
                                         </select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Runs</Label>
-                                        <Input type="number" className="bg-black/50" value={editingPlayer.totalRuns || 0} onChange={(e) => setEditingPlayer({ ...editingPlayer, totalRuns: parseInt(e.target.value) || 0 })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Wickets</Label>
-                                        <Input type="number" className="bg-black/50" value={editingPlayer.totalWickets || 0} onChange={(e) => setEditingPlayer({ ...editingPlayer, totalWickets: parseInt(e.target.value) || 0 })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Matches Played</Label>
-                                        <Input type="number" className="bg-black/50" value={editingPlayer.matchesPlayed || 0} onChange={(e) => setEditingPlayer({ ...editingPlayer, matchesPlayed: parseInt(e.target.value) || 0 })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Catches</Label>
-                                        <Input type="number" className="bg-black/50" value={editingPlayer.totalCatches || 0} onChange={(e) => setEditingPlayer({ ...editingPlayer, totalCatches: parseInt(e.target.value) || 0 })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Fours</Label>
-                                        <Input type="number" className="bg-black/50" value={editingPlayer.totalFours || 0} onChange={(e) => setEditingPlayer({ ...editingPlayer, totalFours: parseInt(e.target.value) || 0 })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Sixes</Label>
-                                        <Input type="number" className="bg-black/50" value={editingPlayer.totalSixes || 0} onChange={(e) => setEditingPlayer({ ...editingPlayer, totalSixes: parseInt(e.target.value) || 0 })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Balls Faced</Label>
-                                        <Input type="number" className="bg-black/50" value={editingPlayer.totalBallsFaced || 0} onChange={(e) => setEditingPlayer({ ...editingPlayer, totalBallsFaced: parseInt(e.target.value) || 0 })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Balls Bowled</Label>
-                                        <Input type="number" className="bg-black/50" value={editingPlayer.totalBallsBowled || 0} onChange={(e) => setEditingPlayer({ ...editingPlayer, totalBallsBowled: parseInt(e.target.value) || 0 })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Runs Conceded</Label>
-                                        <Input type="number" className="bg-black/50" value={editingPlayer.totalRunsConceded || 0} onChange={(e) => setEditingPlayer({ ...editingPlayer, totalRunsConceded: parseInt(e.target.value) || 0 })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Role</Label>
+                                        <Label>Player Role</Label>
                                         <select
                                             className="w-full h-10 px-3 bg-black/50 border border-white/10 rounded-md text-white text-sm"
                                             value={editingPlayer.role || 'Undecided'}
@@ -1186,7 +1150,7 @@ export default function AdminDashboard() {
                                 <div className="flex gap-4 pt-4 border-t border-white/10">
                                     <Button type="button" variant="outline" className="flex-1" onClick={() => setEditingPlayer(null)}>Cancel</Button>
                                     <Button type="submit" className="flex-1" disabled={updatePlayerMutation.isPending}>
-                                        {updatePlayerMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Player Stats'}
+                                        {updatePlayerMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Details'}
                                     </Button>
                                 </div>
                             </form>
