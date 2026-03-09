@@ -1,4 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
+import { eq } from 'drizzle-orm';
+import { db } from '../db/index.js';
+import { players } from '../db/schema.js';
 import { verifyAccessToken, verifyRefreshToken, generateAccessToken, TokenPayload } from '../utils/jwt.js';
 
 // Extend Express Request
@@ -88,4 +91,46 @@ export function playerOrAdmin(req: Request, res: Response, next: NextFunction): 
         return;
     }
     next();
+}
+
+/**
+ * Midleware: Only allows admins OR the captain of the specific team.
+ * Expects team ID in req.params.id or req.params.teamId
+ */
+export async function captainOrAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+        if (!req.user) {
+            res.status(401).json({ error: 'Authentication required' });
+            return;
+        }
+
+        // Admins can skip captain check
+        if (req.user.role === 'admin') {
+            return next();
+        }
+
+        const teamId = req.params.id || req.params.teamId || req.body.teamId;
+        if (!teamId) {
+            res.status(400).json({ error: 'Team ID required' });
+            return;
+        }
+
+        // Check if the user is a captain of this specific team
+        const [player] = await db.select({
+            isCaptain: players.isCaptain,
+            teamId: players.teamId
+        })
+            .from(players)
+            .where(eq(players.userId, req.user.userId))
+            .limit(1);
+
+        if (!player || !player.isCaptain || player.teamId !== teamId) {
+            res.status(403).json({ error: 'Only the team captain or admin can perform this action' });
+            return;
+        }
+
+        next();
+    } catch (error) {
+        res.status(500).json({ error: 'Authorization error' });
+    }
 }

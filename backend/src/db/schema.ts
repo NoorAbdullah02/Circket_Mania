@@ -39,6 +39,7 @@ export const players = pgTable('players', {
     totalSixes: integer('total_sixes').notNull().default(0),
     totalFours: integer('total_fours').notNull().default(0),
     totalCatches: integer('total_catches').notNull().default(0),
+    teamToken: varchar('team_token', { length: 255 }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

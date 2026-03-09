@@ -182,3 +182,30 @@ export function finalMatchEmail(playerName: string, teamA: string, teamB: string
     `,
   };
 }
+
+export function forgotPasswordEmail(userName: string, resetLink: string): EmailParams {
+  return {
+    to: '',
+    toName: userName,
+    subject: `🔐 Reset Your Password - ICE Cricket Mania`,
+    htmlContent: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; color: #fff; padding: 40px; border-radius: 16px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #facc15; font-size: 28px;">🏏 ICE Cricket Mania</h1>
+        </div>
+        <h2 style="color: #38bdf8;">🔐 Password Reset</h2>
+        <p style="color: #e2e8f0; line-height: 1.8; font-size: 16px;">
+          Hi ${userName}, we received a request to reset your password. Click the button below to set a new one:
+        </p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetLink}" style="background: linear-gradient(135deg, #38bdf8, #0ea5e9); color: white; padding: 14px 40px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">
+            Reset Password
+          </a>
+        </div>
+        <p style="color: #94a3b8; font-size: 12px; text-align: center;">This link will expire in 1 hour. If you didn't request this, you can safely ignore this email.</p>
+        <hr style="border: 1px solid #1e293b; margin: 30px 0;" />
+        <p style="color: #64748b; font-size: 12px; text-align: center;">ICE Cricket Mania – Season 2</p>
+      </div>
+    `,
+  };
+}

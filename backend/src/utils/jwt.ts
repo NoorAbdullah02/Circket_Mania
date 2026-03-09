@@ -40,3 +40,13 @@ export function generateActivationToken(payload: { userId: string; email: string
 export function verifyActivationToken(token: string): { userId: string; email: string } {
     return jwt.verify(token, JWT_SECRET) as { userId: string; email: string };
 }
+
+// Generate password reset token
+export function generateResetToken(payload: { userId: string; email: string }): string {
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+}
+
+// Verify password reset token
+export function verifyResetToken(token: string): { userId: string; email: string } {
+    return jwt.verify(token, JWT_SECRET) as { userId: string; email: string };
+}

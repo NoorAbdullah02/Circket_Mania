@@ -10,7 +10,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 
-const PIE_COLORS = ['#0A84FF', '#FFD60A', '#FF3B30', '#22C55E', '#A855F7', '#EC4899'];
+const PIE_COLORS = ['#38BDF8', '#FFD60A', '#FF3B30', '#22C55E', '#A855F7', '#EC4899'];
 
 export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState('overview');
@@ -83,7 +83,7 @@ export default function AdminDashboard() {
     const [editingPlayer, setEditingPlayer] = useState<any>(null);
     const [editingMatch, setEditingMatch] = useState<any>(null);
     const [showMatchForm, setShowMatchForm] = useState(false);
-    const [newTeam, setNewTeam] = useState({ name: '', shortName: '', color: '#0A84FF', logo: '' });
+    const [newTeam, setNewTeam] = useState({ name: '', shortName: '', color: '#38BDF8', logo: '' });
     const [newMatch, setNewMatch] = useState({
         teamAId: '', teamBId: '', date: '', time: '',
         venue: 'University Central Ground', overs: 10, matchType: 'league'
@@ -105,7 +105,7 @@ export default function AdminDashboard() {
         onSuccess: () => {
             toast.success('Team created successfully');
             setShowCreateForm(false);
-            setNewTeam({ name: '', shortName: '', color: '#0A84FF', logo: '' });
+            setNewTeam({ name: '', shortName: '', color: '#38BDF8', logo: '' });
             queryClient.invalidateQueries({ queryKey: ['admin-teams'] });
             queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
         },
@@ -344,10 +344,18 @@ export default function AdminDashboard() {
 
     const finalizeMatch = async (winnerTeamId: string, manOfTheMatchId: string) => {
         if (!winnerTeamId) return toast.error('Please select a winner');
-        completeMatchMutation.mutate({
-            matchId: scoringMatch.id,
-            data: { winnerTeamId, manOfTheMatch: manOfTheMatchId, status: 'completed' }
-        });
+
+        try {
+            // Save final scores and player stats first
+            await saveScoring();
+
+            completeMatchMutation.mutate({
+                matchId: scoringMatch.id,
+                data: { winnerTeamId, manOfTheMatch: manOfTheMatchId, status: 'completed' }
+            });
+        } catch (error) {
+            console.error('Finalize error:', error);
+        }
     };
 
     const tabs = [
@@ -465,7 +473,7 @@ export default function AdminDashboard() {
                                                             <XAxis dataKey="name" stroke="#666" />
                                                             <YAxis stroke="#666" />
                                                             <Tooltip contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)' }} />
-                                                            <Line type="monotone" dataKey="points" stroke="#0A84FF" strokeWidth={3} dot={{ r: 5 }} />
+                                                            <Line type="monotone" dataKey="points" stroke="#38BDF8" strokeWidth={3} dot={{ r: 5 }} />
                                                         </LineChart>
                                                     </ResponsiveContainer>
                                                 ) : (
@@ -537,8 +545,9 @@ export default function AdminDashboard() {
                                                     <div className="space-y-2 md:col-span-1">
                                                         <Label className="text-gray-400 uppercase text-xs tracking-widest">Team Name</Label>
                                                         <Input
-                                                            placeholder="e.g. Dhaka Gladiators"
+                                                            placeholder="e.g. Dhaka Gladiators (Min 7 chars)"
                                                             value={newTeam.name}
+                                                            minLength={7}
                                                             onChange={(e) => setNewTeam({ ...newTeam, name: e.target.value })}
                                                             required
                                                         />
@@ -608,6 +617,7 @@ export default function AdminDashboard() {
                                                         <Label className="text-gray-400 uppercase text-xs tracking-widest">Team Name</Label>
                                                         <Input
                                                             value={editingTeam.name}
+                                                            minLength={7}
                                                             onChange={(e) => setEditingTeam({ ...editingTeam, name: e.target.value })}
                                                             required
                                                         />
@@ -660,7 +670,7 @@ export default function AdminDashboard() {
                                             <div className="h-24 relative overflow-hidden">
                                                 <div
                                                     className="absolute inset-0 opacity-40"
-                                                    style={{ backgroundColor: team.color || '#0A84FF' }}
+                                                    style={{ backgroundColor: team.color || '#38BDF8' }}
                                                 />
                                                 <div className="absolute top-2 right-2 flex gap-1 z-20">
                                                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0 bg-black/40 hover:bg-brand-yellow hover:text-black" onClick={() => setEditingTeam(team)}>
@@ -1377,6 +1387,16 @@ export default function AdminDashboard() {
                                                 ))}
                                             </tbody>
                                         </table>
+                                    </div>
+                                    <div className="flex justify-end pt-4">
+                                        <Button
+                                            className="bg-brand-yellow text-black hover:bg-yellow-500 font-bold h-11 px-8 gap-2"
+                                            onClick={() => updateMatchStatsMutation.mutate({ matchId: scoringMatch.id, stats: matchPlayerStatsData })}
+                                            disabled={updateMatchStatsMutation.isPending}
+                                        >
+                                            <Database className="w-4 h-4" />
+                                            UPDATE PLAYER STATS
+                                        </Button>
                                     </div>
                                 </div>
                             </div>

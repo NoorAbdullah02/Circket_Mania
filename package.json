@@ -1,0 +1,25 @@
+{
+  "name": "cricket-mania",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "npm install --prefix backend --include=dev && npm install --prefix frontend --include=dev && npm run build --prefix frontend && npm run build --prefix backend",
+    "start": "npm run db:push --prefix backend && npm run seed --prefix backend && npm run start --prefix backend"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NoorAbdullah02/Circket_Mania.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/NoorAbdullah02/Circket_Mania/issues"
+  },
+  "homepage": "https://github.com/NoorAbdullah02/Circket_Mania#readme"
+}

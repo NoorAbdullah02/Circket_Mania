@@ -51,7 +51,7 @@ export default function TeamDetails() {
                 animate={{ opacity: 1, y: 0 }}
                 className="relative overflow-hidden rounded-2xl mb-10"
             >
-                <div className="absolute inset-0 opacity-20" style={{ backgroundColor: team.color || '#0A84FF' }} />
+                <div className="absolute inset-0 opacity-20" style={{ backgroundColor: team.color || '#38BDF8' }} />
                 <div className="absolute inset-0 bg-gradient-to-r from-brand-bg via-transparent to-brand-bg" />
                 <div className="relative flex flex-col md:flex-row items-center gap-8 p-8 md:p-12">
                     <div className="relative">

@@ -74,12 +74,15 @@ export default function Matches() {
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-4">
                                                 <img
-                                                    src={tA?.logo || `https://ui-avatars.com/api/?name=${tA?.name}&background=random`}
+                                                    src={tA?.logo || `https://ui-avatars.com/api/?name=${tA?.shortName || tA?.name}&background=random`}
                                                     alt={tA?.name}
                                                     className="w-12 h-12 rounded-full bg-white/10 flex-shrink-0 object-cover border border-white/20"
                                                 />
-                                                <span className={`font-heading text-2xl tracking-wide ${match.winnerTeamId === tA.id ? 'text-brand-yellow font-bold' : 'text-white'}`}>
-                                                    {tA?.name}
+                                                <span
+                                                    className={`font-heading text-2xl lg:text-3xl tracking-wide ${match.winnerTeamId === tA.id ? 'text-brand-yellow font-bold' : 'text-white'}`}
+                                                    style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
+                                                >
+                                                    {tA?.shortName || tA?.name}
                                                 </span>
                                             </div>
                                             <div className="text-right flex flex-col items-end">
@@ -89,7 +92,7 @@ export default function Matches() {
                                                         <span className="text-sm text-gray-400 font-medium">({sc.teamAOversPlayed} ov)</span>
                                                     </>
                                                 ) : (
-                                                    <span className="text-gray-500 font-heading">Yet to bat</span>
+                                                    <span className="text-gray-300 font-heading text-sm uppercase tracking-widest opacity-60">Yet to bat</span>
                                                 )}
                                             </div>
                                         </div>
@@ -102,12 +105,15 @@ export default function Matches() {
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-4">
                                                 <img
-                                                    src={tB?.logo || `https://ui-avatars.com/api/?name=${tB?.name}&background=random`}
+                                                    src={tB?.logo || `https://ui-avatars.com/api/?name=${tB?.shortName || tB?.name}&background=random`}
                                                     alt={tB?.name}
                                                     className="w-12 h-12 rounded-full bg-white/10 flex-shrink-0 object-cover border border-white/20"
                                                 />
-                                                <span className={`font-heading text-2xl tracking-wide ${match.winnerTeamId === tB.id ? 'text-brand-yellow font-bold' : 'text-white'}`}>
-                                                    {tB?.name}
+                                                <span
+                                                    className={`font-heading text-2xl lg:text-3xl tracking-wide ${match.winnerTeamId === tB.id ? 'text-brand-yellow font-bold' : 'text-white'}`}
+                                                    style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
+                                                >
+                                                    {tB?.shortName || tB?.name}
                                                 </span>
                                             </div>
                                             <div className="text-right flex flex-col items-end">

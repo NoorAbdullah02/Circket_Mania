@@ -3,9 +3,9 @@ import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { users, players } from '../db/schema.js';
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken, generateActivationToken, verifyActivationToken } from '../utils/jwt.js';
-import { registerSchema, loginSchema, activateAccountSchema } from '../schemas/validation.js';
-import { sendEmail } from '../services/email.js';
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken, generateActivationToken, verifyActivationToken, generateResetToken, verifyResetToken } from '../utils/jwt.js';
+import { registerSchema, loginSchema, activateAccountSchema, forgotPasswordSchema, resetPasswordSchema } from '../schemas/validation.js';
+import { sendEmail, forgotPasswordEmail } from '../services/email.js';
 
 // POST /auth/register — Students register freely (no token needed)
 export async function register(req: Request, res: Response): Promise<void> {
@@ -228,6 +228,71 @@ export async function getMe(req: Request, res: Response): Promise<void> {
 export async function logout(req: Request, res: Response): Promise<void> {
     res.clearCookie('refreshToken', { path: '/' });
     res.json({ message: 'Logged out successfully' });
+}
+
+// POST /auth/forgot-password — Request password reset
+export async function forgotPassword(req: Request, res: Response): Promise<void> {
+    try {
+        const parsed = forgotPasswordSchema.safeParse(req.body);
+        if (!parsed.success) {
+            res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten() });
+            return;
+        }
+
+        const { email } = parsed.data;
+
+        const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+        if (!user) {
+            // Log but don't reveal user existence
+            res.json({ message: 'If an account exists with that email, a reset link has been sent.' });
+            return;
+        }
+
+        const resetToken = generateResetToken({ userId: user.id, email: user.email });
+        const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const resetLink = `${FRONTEND_URL}/reset-password?token=${resetToken}`;
+
+        const emailData = forgotPasswordEmail(user.name, resetLink);
+        emailData.to = user.email;
+        await sendEmail(emailData);
+
+        res.json({ message: 'If an account exists with that email, a reset link has been sent.' });
+    } catch (error) {
+        console.error('Forgot password error:', error);
+        res.status(500).json({ error: 'Failed to process request' });
+    }
+}
+
+// POST /auth/reset-password — Set new password using token
+export async function resetPassword(req: Request, res: Response): Promise<void> {
+    try {
+        const parsed = resetPasswordSchema.safeParse(req.body);
+        if (!parsed.success) {
+            res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten() });
+            return;
+        }
+
+        const { token, password } = parsed.data;
+
+        let payload;
+        try {
+            payload = verifyResetToken(token);
+        } catch (error) {
+            res.status(400).json({ error: 'Invalid or expired reset token' });
+            return;
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        await db.update(users)
+            .set({ password: hashedPassword, isActive: true })
+            .where(eq(users.id, payload.userId));
+
+        res.json({ message: 'Password reset successfully' });
+    } catch (error) {
+        console.error('Reset password error:', error);
+        res.status(500).json({ error: 'Failed to reset password' });
+    }
 }
 
 // POST /auth/test-email — Send test email (admin only)

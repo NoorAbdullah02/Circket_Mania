@@ -3,7 +3,7 @@
 @theme {
   --color-brand-red: #FF3B30;
   --color-brand-yellow: #FFD60A;
-  --color-brand-blue: #0A84FF;
+  --color-brand-blue: #38BDF8;
   --color-brand-bg: #000000;
   --color-brand-surface: rgba(0, 0, 0, 0.6);
   --color-brand-surface-light: rgba(255, 255, 255, 0.05);
@@ -59,7 +59,7 @@
     --muted-foreground: 0 0% 65%;
 
     --accent: 211 100% 52%;
-    /* #0A84FF */
+    /* #38BDF8 */
     --accent-foreground: 0 0% 100%;
 
     --success: 142 71% 45%;

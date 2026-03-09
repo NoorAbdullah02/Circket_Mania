@@ -15,6 +15,7 @@ interface AuthState {
     isAuthenticated: boolean;
     isInitialized: boolean;
     setAuth: (user: User, player: any | null, token: string) => void;
+    setPlayer: (player: any | null) => void;
     setToken: (token: string) => void;
     setInitialized: (val: boolean) => void;
     logout: (silent?: boolean) => void;
@@ -30,6 +31,7 @@ export const useAuthStore = create<AuthState>()(
             isInitialized: false,
             setAuth: (user, player, token) =>
                 set({ user, player, accessToken: token, isAuthenticated: true, isInitialized: true }),
+            setPlayer: (player) => set({ player }),
             setToken: (token) => set({ accessToken: token, isAuthenticated: true }),
             setInitialized: (val) => set({ isInitialized: val }),
             logout: () => set({ user: null, player: null, accessToken: null, isAuthenticated: false }),

@@ -78,7 +78,7 @@ export async function getAllTeams(req: Request, res: Response): Promise<void> {
 
 export async function getTeamById(req: Request, res: Response): Promise<void> {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const [team] = await db.select().from(teams).where(eq(teams.id, id)).limit(1);
         if (!team) {
             res.status(404).json({ error: 'Team not found' });
@@ -116,7 +116,7 @@ export async function getTeamById(req: Request, res: Response): Promise<void> {
 
 export async function updateTeam(req: Request, res: Response): Promise<void> {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const { name, shortName, color, logo } = req.body;
 
         const [team] = await db.update(teams)
@@ -142,7 +142,7 @@ export async function updateTeam(req: Request, res: Response): Promise<void> {
 
 export async function deleteTeam(req: Request, res: Response): Promise<void> {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
 
         await db.update(players)
             .set({ teamId: null, isCaptain: false, status: 'pending' })
@@ -184,6 +184,7 @@ export async function assignPlayersToTeam(req: Request, res: Response): Promise<
 
             const teamToken = Math.floor(100000 + Math.random() * 900000).toString();
 
+            // Store teamToken in player record
             await db.update(players)
                 .set({ teamId, status: 'selected', teamToken })
                 .where(eq(players.id, playerId));
@@ -191,6 +192,7 @@ export async function assignPlayersToTeam(req: Request, res: Response): Promise<
             const [user] = await db.select().from(users).where(eq(users.id, player.userId)).limit(1);
             if (!user) continue;
 
+            // Update user status and token
             const activationToken = generateActivationToken({ userId: user.id, email: user.email });
             await db.update(users)
                 .set({ activationToken })
@@ -199,6 +201,8 @@ export async function assignPlayersToTeam(req: Request, res: Response): Promise<
             const activationLink = `${FRONTEND_URL}/activate?token=${activationToken}`;
             const emailData = playerSelectedEmail(user.name, team.name, activationLink, teamToken);
             emailData.to = user.email;
+
+            console.log(`[AssignPlayer] Sending activation email to ${user.email} with token ${teamToken}`);
             await sendEmail(emailData);
         }
 
@@ -211,7 +215,7 @@ export async function assignPlayersToTeam(req: Request, res: Response): Promise<
 
 export async function removePlayerFromTeam(req: Request, res: Response): Promise<void> {
     try {
-        const { playerId } = req.params;
+        const playerId = req.params.playerId as string;
 
         await db.update(players)
             .set({ teamId: null, isCaptain: false, status: 'pending' })

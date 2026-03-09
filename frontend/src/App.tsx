@@ -11,6 +11,8 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ActivateAccount from './pages/ActivateAccount';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import PlayerDashboard from './pages/PlayerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import PointsTable from './pages/PointsTable';
@@ -72,6 +74,8 @@ function App() {
                             <Route path="/login" element={<Login />} />
                             <Route path="/register" element={<Register />} />
                             <Route path="/activate" element={<ActivateAccount />} />
+                            <Route path="/forgot-password" element={<ForgotPassword />} />
+                            <Route path="/reset-password" element={<ResetPassword />} />
                             <Route path="/points-table" element={<PointsTable />} />
                             <Route path="/matches" element={<Matches />} />
                             <Route path="/matches/:id" element={<MatchDetails />} />

@@ -31,7 +31,7 @@ export async function getAllPlayers(req: Request, res: Response): Promise<void> 
                 matchesPlayed: players.matchesPlayed,
                 totalSixes: players.totalSixes,
                 totalFours: players.totalFours,
-                totalCatches: players.totalCatches,
+                totalCatches: players.totalCatches, teamToken: players.teamToken,
                 totalBallsFaced: players.totalBallsFaced,
                 totalBallsBowled: players.totalBallsBowled,
                 totalRunsConceded: players.totalRunsConceded,
@@ -76,7 +76,7 @@ export async function getAllPlayers(req: Request, res: Response): Promise<void> 
 
 export async function getPlayerById(req: Request, res: Response): Promise<void> {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
 
         const [player] = await db
             .select({
@@ -97,7 +97,7 @@ export async function getPlayerById(req: Request, res: Response): Promise<void> 
                 matchesPlayed: players.matchesPlayed,
                 totalSixes: players.totalSixes,
                 totalFours: players.totalFours,
-                totalCatches: players.totalCatches,
+                totalCatches: players.totalCatches, teamToken: players.teamToken,
                 totalBallsFaced: players.totalBallsFaced,
                 totalBallsBowled: players.totalBallsBowled,
                 totalRunsConceded: players.totalRunsConceded,
@@ -171,7 +171,7 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
 
 export async function adminUpdatePlayer(req: Request, res: Response): Promise<void> {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const updates = req.body;
 
         const [player] = await db.select({
@@ -193,7 +193,7 @@ export async function adminUpdatePlayer(req: Request, res: Response): Promise<vo
             totalRunsConceded: players.totalRunsConceded,
             totalSixes: players.totalSixes,
             totalFours: players.totalFours,
-            totalCatches: players.totalCatches,
+            totalCatches: players.totalCatches, teamToken: players.teamToken,
             createdAt: players.createdAt,
         }).from(players).where(eq(players.id, id)).limit(1);
         if (!player) {
@@ -272,7 +272,7 @@ export async function adminUpdatePlayer(req: Request, res: Response): Promise<vo
 
 export async function deletePlayer(req: Request, res: Response): Promise<void> {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
 
         const [player] = await db.select({
             id: players.id,
@@ -293,7 +293,7 @@ export async function deletePlayer(req: Request, res: Response): Promise<void> {
             totalRunsConceded: players.totalRunsConceded,
             totalSixes: players.totalSixes,
             totalFours: players.totalFours,
-            totalCatches: players.totalCatches,
+            totalCatches: players.totalCatches, teamToken: players.teamToken,
             createdAt: players.createdAt,
         }).from(players).where(eq(players.id, id)).limit(1);
         if (!player) {
@@ -360,7 +360,7 @@ export async function bulkAction(req: Request, res: Response): Promise<void> {
                         totalRunsConceded: players.totalRunsConceded,
                         totalSixes: players.totalSixes,
                         totalFours: players.totalFours,
-                        totalCatches: players.totalCatches,
+                        totalCatches: players.totalCatches, teamToken: players.teamToken,
                         createdAt: players.createdAt,
                     }).from(players).where(eq(players.id, pid)).limit(1);
                     if (!player) continue;
@@ -447,7 +447,7 @@ export async function bulkAction(req: Request, res: Response): Promise<void> {
                         totalRunsConceded: players.totalRunsConceded,
                         totalSixes: players.totalSixes,
                         totalFours: players.totalFours,
-                        totalCatches: players.totalCatches,
+                        totalCatches: players.totalCatches, teamToken: players.teamToken,
                         createdAt: players.createdAt,
                     }).from(players).where(eq(players.id, pid)).limit(1);
                     if (!player) continue;
@@ -479,7 +479,7 @@ export async function bulkAction(req: Request, res: Response): Promise<void> {
                         totalRunsConceded: players.totalRunsConceded,
                         totalSixes: players.totalSixes,
                         totalFours: players.totalFours,
-                        totalCatches: players.totalCatches,
+                        totalCatches: players.totalCatches, teamToken: players.teamToken,
                         createdAt: players.createdAt,
                     }).from(players).where(eq(players.id, pid)).limit(1);
                     if (!player) continue;
@@ -506,10 +506,15 @@ export async function bulkAction(req: Request, res: Response): Promise<void> {
                             createdAt: teams.createdAt,
                         }).from(teams).where(eq(teams.id, player.teamId)).limit(1);
                         if (team) {
+                            const teamToken = player.teamToken || Math.floor(100000 + Math.random() * 900000).toString();
+                            if (!player.teamToken) {
+                                await db.update(players).set({ teamToken }).where(eq(players.id, player.id));
+                            }
+
                             const activationToken = generateActivationToken({ userId: user.id, email: user.email });
                             await db.update(users).set({ activationToken }).where(eq(users.id, user.id));
                             const activationLink = `${FRONTEND_URL}/activate?token=${activationToken}`;
-                            const emailData = playerSelectedEmail(user.name, team.name, activationLink);
+                            const emailData = playerSelectedEmail(user.name, team.name, activationLink, teamToken);
                             emailData.to = user.email;
                             await sendEmail(emailData);
                         }
@@ -546,7 +551,7 @@ export async function getLeaderboard(req: Request, res: Response): Promise<void>
                 totalBallsFaced: players.totalBallsFaced,
                 totalBallsBowled: players.totalBallsBowled,
                 totalRunsConceded: players.totalRunsConceded,
-                totalCatches: players.totalCatches,
+                totalCatches: players.totalCatches, teamToken: players.teamToken,
                 isCaptain: players.isCaptain,
                 role: players.role,
             })
@@ -585,7 +590,7 @@ export async function getPlayerOfTheSeries(req: Request, res: Response): Promise
                 profileImage: players.profileImage,
                 totalRuns: players.totalRuns,
                 totalWickets: players.totalWickets,
-                totalCatches: players.totalCatches,
+                totalCatches: players.totalCatches, teamToken: players.teamToken,
                 totalSixes: players.totalSixes,
                 totalFours: players.totalFours,
             })
@@ -647,28 +652,9 @@ export async function verifyTeamToken(req: Request, res: Response): Promise<void
             return;
         }
 
-        const [player] = await db.select({
-            id: players.id,
-            userId: players.userId,
-            batch: players.batch,
-            teamId: players.teamId,
-            profileImage: players.profileImage,
-            bio: players.bio,
-            isCaptain: players.isCaptain,
-            status: players.status,
-            jerseyNumber: players.jerseyNumber,
-            role: players.role,
-            totalRuns: players.totalRuns,
-            totalWickets: players.totalWickets,
-            matchesPlayed: players.matchesPlayed,
-            totalBallsFaced: players.totalBallsFaced,
-            totalBallsBowled: players.totalBallsBowled,
-            totalRunsConceded: players.totalRunsConceded,
-            totalSixes: players.totalSixes,
-            totalFours: players.totalFours,
-            totalCatches: players.totalCatches,
-            createdAt: players.createdAt,
-        }).from(players).where(eq(players.userId, req.user.userId)).limit(1);
+        console.log(`[VerifyToken] User ${req.user.userId} is verifying with token: ${token}`);
+
+        const [player] = await db.select().from(players).where(eq(players.userId, req.user.userId)).limit(1);
         if (!player) {
             res.status(404).json({ error: 'Player profile not found' });
             return;
@@ -684,20 +670,18 @@ export async function verifyTeamToken(req: Request, res: Response): Promise<void
             return;
         }
 
-        // Verify that the token is a valid 6-digit number (the team token sent in email)
-        // For now, we accept any valid 6-digit token since we don't store it
-        // In a production app, you'd use Redis or similar to store temporary tokens
-        if (!/^\d{6}$/.test(token)) {
+        // Verify that the token matches the teamToken stored in db
+        if (player.teamToken !== token) {
             res.status(400).json({ error: 'Token invalid or already used' });
             return;
         }
 
         // Update player status to activated
-        await db.update(players).set({
+        const [updatedPlayer] = await db.update(players).set({
             status: 'activated',
-        }).where(eq(players.id, player.id));
+        }).where(eq(players.id, player.id)).returning();
 
-        res.json({ message: 'Profile activated successfully! ✔️' });
+        res.json({ message: 'Profile activated successfully! ✔️', player: updatedPlayer });
     } catch (error) {
         console.error('Token verification error:', error);
         res.status(500).json({ error: 'Verification failed' });

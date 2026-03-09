@@ -14,15 +14,23 @@ export const loginSchema = z.object({
     email: z.string().email('Invalid email address'),
     password: z.string().min(6, 'Password must be at least 6 characters'),
 });
-
 export const activateAccountSchema = z.object({
     token: z.string().min(1, 'Activation token is required'),
     password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
+export const forgotPasswordSchema = z.object({
+    email: z.string().email('Invalid email address'),
+});
+
+export const resetPasswordSchema = z.object({
+    token: z.string().min(1, 'Token is required'),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
 // Team schemas
 export const createTeamSchema = z.object({
-    name: z.string().min(2, 'Team name must be at least 2 characters'),
+    name: z.string().min(7, 'Team name must be at least 7 characters'),
     shortName: z.string().max(10).optional(),
     color: z.string().optional(),
     logo: z.string().optional(),

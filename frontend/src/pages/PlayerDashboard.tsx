@@ -11,7 +11,7 @@ import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
 
 export default function PlayerDashboard() {
-    const { user, player } = useAuthStore();
+    const { user, player, setPlayer } = useAuthStore();
     const queryClient = useQueryClient();
 
     const [formData, setFormData] = useState({
@@ -79,7 +79,10 @@ export default function PlayerDashboard() {
     const verifyTokenMutation = useMutation({
         mutationFn: async (token: string) => api.post('/players/verify-token', { token }),
         onSuccess: (res) => {
-            toast.success(res.data.message);
+            toast.success(res.data.message || 'Profile Unlocked! 🚀');
+            if (res.data.player) {
+                setPlayer(res.data.player);
+            }
             queryClient.invalidateQueries({ queryKey: ['auth-me'] });
         },
         onError: (err: any) => toast.error(err.response?.data?.error || 'Verification failed')
@@ -107,7 +110,7 @@ export default function PlayerDashboard() {
                                 placeholder="Enter 6-digit token"
                                 value={token}
                                 onChange={(e) => setToken(e.target.value)}
-                                className="text-center text-2xl tracking-[1em] font-bold h-14 bg-black/50 border-white/10"
+                                className="text-center text-xl sm:text-2xl tracking-[0.5em] sm:tracking-[1em] font-bold h-14 bg-black/50 border-white/10"
                                 maxLength={6}
                                 required
                             />
@@ -264,6 +267,54 @@ export default function PlayerDashboard() {
                         </CardContent>
                     </Card>
 
+                    {/* Team Squad Section for Captain */}
+                    {player.isCaptain && teamInfo?.players && (
+                        <Card className="glass-card mt-8">
+                            <CardHeader className="border-b border-white/10 flex flex-row items-center justify-between">
+                                <CardTitle className="font-heading tracking-widest text-xl uppercase">My Team Squad</CardTitle>
+                                <div className="text-[10px] bg-brand-blue/20 text-brand-blue px-3 py-1 rounded-full border border-brand-blue/30 font-bold uppercase tracking-widest">
+                                    {teamInfo.players.length} Members
+                                </div>
+                            </CardHeader>
+                            <CardContent className="pt-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {teamInfo.players.map((p: any) => (
+                                        <motion.div
+                                            key={p.id}
+                                            initial={{ opacity: 0, scale: 0.95 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            className="flex items-center gap-4 p-3 rounded-xl bg-black/40 border border-white/5 hover:border-brand-blue/30 transition-all group"
+                                        >
+                                            <div className="relative">
+                                                <img
+                                                    src={p.profileImage || `https://ui-avatars.com/api/?name=${p.name}&background=random`}
+                                                    className="w-12 h-12 rounded-full object-cover border border-white/10 group-hover:border-brand-blue/50 transition-colors"
+                                                    alt={p.name}
+                                                />
+                                                {p.isCaptain && (
+                                                    <div className="absolute -top-1 -right-1 bg-brand-yellow text-black rounded-full p-1 border-2 border-black">
+                                                        <Shield className="w-2 h-2" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="font-bold text-white text-sm group-hover:text-brand-blue transition-colors">
+                                                    {p.name}
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] text-gray-400 uppercase tracking-widest">{p.role || 'Player'}</span>
+                                                    {p.jerseyNumber && (
+                                                        <span className="text-[9px] bg-white/5 text-gray-500 px-1.5 py-0.5 rounded border border-white/5">#{p.jerseyNumber}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     {/* Captain Team Edit Section */}
                     {player.isCaptain && teamInfo && (
                         <div className="mt-8">
@@ -282,7 +333,7 @@ function CaptainTeamEditor({ team }: { team: any }) {
     const [teamData, setTeamData] = useState({
         name: team.name || '',
         logo: team.logo || '',
-        color: team.color || '#0A84FF',
+        color: team.color || '#38BDF8',
     });
     const [uploadingLogo, setUploadingLogo] = useState(false);
 
@@ -320,8 +371,9 @@ function CaptainTeamEditor({ team }: { team: any }) {
                 <CardTitle className="font-heading tracking-widest text-sm uppercase text-brand-yellow">
                     <Shield className="w-4 h-4 inline mr-2" />Team Management
                 </CardTitle>
-                <Button variant="ghost" size="sm" className="text-white/60 hover:text-white" onClick={() => setEditing(!editing)}>
-                    <Edit className="w-4 h-4" />
+                <Button variant="outline" size="sm" className="bg-white/5 border-white/10 text-white hover:bg-white/10" onClick={() => setEditing(!editing)}>
+                    <Edit className="w-4 h-4 mr-2" />
+                    <span>Edit Team</span>
                 </Button>
             </CardHeader>
             <CardContent className="pt-6">
@@ -372,6 +424,6 @@ function CaptainTeamEditor({ team }: { team: any }) {
                     </form>
                 )}
             </CardContent>
-        </Card>
+        </Card >
     );
 }

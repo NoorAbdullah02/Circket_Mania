@@ -90,89 +90,63 @@ export async function getAllMatches(req: Request, res: Response): Promise<void> 
 
         if (status) {
             console.log('Fetching matches with status:', status);
-            allMatches = await db.select({
-                id: matches.id,
-                teamAId: matches.teamAId,
-                teamBId: matches.teamBId,
-                overs: matches.overs,
-                date: matches.date,
-                time: matches.time,
-                venue: matches.venue,
-                status: matches.status,
-                tossWinner: matches.tossWinner,
-                tossDecision: matches.tossDecision,
-                winnerTeamId: matches.winnerTeamId,
-                manOfTheMatch: matches.manOfTheMatch,
-                matchType: matches.matchType,
-                createdAt: matches.createdAt,
-            }).from(matches).where(eq(matches.status, status as any));
+            allMatches = await db.select().from(matches).where(eq(matches.status, status as any));
         } else if (teamId) {
             console.log('Fetching matches for teamId:', teamId);
-            allMatches = await db.select({
-                id: matches.id,
-                teamAId: matches.teamAId,
-                teamBId: matches.teamBId,
-                overs: matches.overs,
-                date: matches.date,
-                time: matches.time,
-                venue: matches.venue,
-                status: matches.status,
-                tossWinner: matches.tossWinner,
-                tossDecision: matches.tossDecision,
-                winnerTeamId: matches.winnerTeamId,
-                manOfTheMatch: matches.manOfTheMatch,
-                matchType: matches.matchType,
-                createdAt: matches.createdAt,
-            }).from(matches)
+            allMatches = await db.select().from(matches)
                 .where(or(eq(matches.teamAId, teamId as string), eq(matches.teamBId, teamId as string)));
         } else {
             console.log('Fetching all matches without filters');
-            allMatches = await db.select({
-                id: matches.id,
-                teamAId: matches.teamAId,
-                teamBId: matches.teamBId,
-                overs: matches.overs,
-                date: matches.date,
-                time: matches.time,
-                venue: matches.venue,
-                status: matches.status,
-                tossWinner: matches.tossWinner,
-                tossDecision: matches.tossDecision,
-                winnerTeamId: matches.winnerTeamId,
-                manOfTheMatch: matches.manOfTheMatch,
-                matchType: matches.matchType,
-                createdAt: matches.createdAt,
-            }).from(matches);
+            allMatches = await db.select().from(matches);
         }
 
         console.log('Found matches:', allMatches.length);
 
         // Sort in JavaScript instead of database
+        // Sort matches: Live first, then Upcoming (closest first), then Completed (latest first)
         allMatches.sort((a, b) => {
-            return (b.date as any) > (a.date as any) ? 1 : -1;
+            const statusOrder = { live: 0, upcoming: 1, completed: 2, cancelled: 3, no_result: 3, postponed: 3 };
+            const statusA = statusOrder[a.status as keyof typeof statusOrder] ?? 99;
+            const statusB = statusOrder[b.status as keyof typeof statusOrder] ?? 99;
+
+            if (statusA !== statusB) return statusA - statusB;
+
+            // Same status -> sort by date
+            if (a.status === 'upcoming') {
+                return (a.date as string) > (b.date as string) ? 1 : -1;
+            } else {
+                return (b.date as string) > (a.date as string) ? 1 : -1;
+            }
         });
 
         const matchesWithDetails = await Promise.all(
             allMatches.map(async (match) => {
-                const [teamA] = await db.select().from(teams).where(eq(teams.id, match.teamAId)).limit(1);
-                const [teamB] = await db.select().from(teams).where(eq(teams.id, match.teamBId)).limit(1);
-                const [score] = await db.select().from(scores).where(eq(scores.matchId, match.id)).limit(1);
+                const teamARecords = await db.select().from(teams).where(eq(teams.id, match.teamAId)).limit(1);
+                const teamA = teamARecords[0] || null;
+
+                const teamBRecords = await db.select().from(teams).where(eq(teams.id, match.teamBId)).limit(1);
+                const teamB = teamBRecords[0] || null;
+
+                const scoreRecords = await db.select().from(scores).where(eq(scores.matchId, match.id)).limit(1);
+                const score = scoreRecords[0] || null;
 
                 let winnerTeam = null;
                 if (match.winnerTeamId) {
-                    const [wt] = await db.select().from(teams).where(eq(teams.id, match.winnerTeamId)).limit(1);
-                    winnerTeam = wt;
+                    const wtRecs = await db.select().from(teams).where(eq(teams.id, match.winnerTeamId)).limit(1);
+                    winnerTeam = wtRecs[0] || null;
                 }
 
                 let motm = null;
                 if (match.manOfTheMatch) {
-                    const [p] = await db
-                        .select({ id: players.id, name: users.name, profileImage: players.profileImage })
-                        .from(players)
-                        .innerJoin(users, eq(players.userId, users.id))
-                        .where(eq(players.id, match.manOfTheMatch))
-                        .limit(1);
-                    motm = p;
+                    const playerRecs = await db.select().from(players).where(eq(players.id, match.manOfTheMatch)).limit(1);
+                    if (playerRecs[0]) {
+                        const userRecs = await db.select().from(users).where(eq(users.id, playerRecs[0].userId)).limit(1);
+                        motm = {
+                            id: playerRecs[0].id,
+                            name: userRecs[0]?.name || 'Unknown',
+                            profileImage: playerRecs[0].profileImage
+                        };
+                    }
                 }
 
                 return { ...match, teamA, teamB, score, winnerTeam, manOfTheMatch: motm };
@@ -215,77 +189,51 @@ export async function getAllMatches(req: Request, res: Response): Promise<void> 
 export async function getMatchById(req: Request, res: Response): Promise<void> {
     try {
         const id = req.params.id as string;
-        const [match] = await db.select({
-            id: matches.id,
-            teamAId: matches.teamAId,
-            teamBId: matches.teamBId,
-            overs: matches.overs,
-            date: matches.date,
-            time: matches.time,
-            venue: matches.venue,
-            status: matches.status,
-            tossWinner: matches.tossWinner,
-            tossDecision: matches.tossDecision,
-            winnerTeamId: matches.winnerTeamId,
-            manOfTheMatch: matches.manOfTheMatch,
-            matchType: matches.matchType,
-            createdAt: matches.createdAt,
-        }).from(matches).where(eq(matches.id, id)).limit(1);
+        const matchRecords = await db.select().from(matches).where(eq(matches.id, id)).limit(1);
+        const match = matchRecords[0];
+
         if (!match) {
             res.status(404).json({ error: 'Match not found' });
             return;
         }
 
-        const [teamA] = await db.select({
-            id: teams.id,
-            name: teams.name,
-            logo: teams.logo,
-            shortName: teams.shortName,
-            color: teams.color,
-            createdAt: teams.createdAt,
-        }).from(teams).where(eq(teams.id, match.teamAId)).limit(1);
-        const [teamB] = await db.select({
-            id: teams.id,
-            name: teams.name,
-            logo: teams.logo,
-            shortName: teams.shortName,
-            color: teams.color,
-            createdAt: teams.createdAt,
-        }).from(teams).where(eq(teams.id, match.teamBId)).limit(1);
-        const [score] = await db.select({
-            id: scores.id,
-            matchId: scores.matchId,
-            teamARuns: scores.teamARuns,
-            teamBRuns: scores.teamBRuns,
-            teamAWickets: scores.teamAWickets,
-            teamBWickets: scores.teamBWickets,
-            teamAOversPlayed: scores.teamAOversPlayed,
-            teamBOversPlayed: scores.teamBOversPlayed,
-            teamAExtras: scores.teamAExtras,
-            teamBExtras: scores.teamBExtras,
-            currentInnings: scores.currentInnings,
-            updatedAt: scores.updatedAt,
-        }).from(scores).where(eq(scores.matchId, match.id)).limit(1);
+        const teamARecords = await db.select().from(teams).where(eq(teams.id, match.teamAId)).limit(1);
+        const teamA = teamARecords[0] || null;
+
+        const teamBRecords = await db.select().from(teams).where(eq(teams.id, match.teamBId)).limit(1);
+        const teamB = teamBRecords[0] || null;
+
+        const scoreRecords = await db.select().from(scores).where(eq(scores.matchId, match.id)).limit(1);
+        const score = scoreRecords[0] || null;
+
         const matchCommentary = await db.select().from(commentary)
             .where(eq(commentary.matchId, match.id))
             .orderBy(desc(commentary.createdAt));
 
         let winnerTeam = null;
         if (match.winnerTeamId) {
-            const [wt] = await db.select({
-                id: teams.id,
-                name: teams.name,
-                logo: teams.logo,
-                shortName: teams.shortName,
-                color: teams.color,
-                createdAt: teams.createdAt,
-            }).from(teams).where(eq(teams.id, match.winnerTeamId)).limit(1);
-            winnerTeam = wt;
+            const wtRecords = await db.select().from(teams).where(eq(teams.id, match.winnerTeamId)).limit(1);
+            winnerTeam = wtRecords[0] || null;
         }
 
-        res.json({ ...match, teamA, teamB, score, winnerTeam, commentary: matchCommentary });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to get match' });
+        let motm = null;
+        if (match.manOfTheMatch) {
+            // Use simple query for MOTM to avoid join errors
+            const playerRecs = await db.select().from(players).where(eq(players.id, match.manOfTheMatch)).limit(1);
+            if (playerRecs[0]) {
+                const userRecs = await db.select().from(users).where(eq(users.id, playerRecs[0].userId)).limit(1);
+                motm = {
+                    id: playerRecs[0].id,
+                    name: userRecs[0]?.name || 'Unknown',
+                    profileImage: playerRecs[0].profileImage
+                };
+            }
+        }
+
+        res.json({ ...match, teamA, teamB, score, winnerTeam, manOfTheMatch: motm, commentary: matchCommentary });
+    } catch (error: any) {
+        console.error('[getMatchById] Critical Failure:', error);
+        res.status(500).json({ error: 'Failed to get match: ' + error.message });
     }
 }
 
@@ -336,6 +284,9 @@ export async function updateMatch(req: Request, res: Response): Promise<void> {
             res.status(404).json({ error: 'Match not found' });
             return;
         }
+
+        // Recalculate standings in case status, teams, or winner changed
+        await recalculatePointsTable();
 
         // Send email if schedule changed
         if (data.date || data.time || data.venue) {
@@ -433,15 +384,116 @@ export async function updateScore(req: Request, res: Response): Promise<void> {
             return;
         }
 
+        // If match is completed, recalculate points table to reflect score changes in NRR
+        const [match] = await db.select().from(matches).where(eq(matches.id, id)).limit(1);
+        if (match && match.status === 'completed') {
+            await recalculatePointsTable();
+        }
+
         res.json({ message: 'Score updated', score });
     } catch (error) {
         res.status(500).json({ error: 'Failed to update score' });
     }
 }
 
+// Helper to completely recalculate the points table
+export async function recalculatePointsTable() {
+    try {
+        console.log('🔄 Recalculating Points Table...');
+        const allTeams = await db.select().from(teams);
+        console.log(`Processing ${allTeams.length} teams`);
+        const settings = await db.select().from(tournamentSettings).limit(1);
+        const pointsPerWin = settings[0]?.pointsPerWin || 2;
+        const pointsPerLoss = settings[0]?.pointsPerLoss || 0;
+        const pointsPerNoResult = settings[0]?.pointsPerNoResult || 1;
+
+        for (const team of allTeams) {
+            const teamMatches = await db.select().from(matches).where(
+                and(
+                    or(eq(matches.status, 'completed' as any), eq(matches.status, 'no_result' as any)),
+                    or(eq(matches.teamAId, team.id), eq(matches.teamBId, team.id))
+                )
+            );
+
+            let stats = {
+                played: 0,
+                wins: 0,
+                losses: 0,
+                points: 0,
+                runsScored: 0,
+                oversPlayed: 0,
+                runsConceded: 0,
+                oversBowled: 0,
+            };
+
+            for (const match of teamMatches) {
+                stats.played++;
+
+                if (match.status === 'completed') {
+                    if (match.winnerTeamId === team.id) {
+                        stats.wins++;
+                        stats.points += pointsPerWin;
+                    } else if (match.winnerTeamId) {
+                        stats.losses++;
+                        stats.points += pointsPerLoss;
+                    } else {
+                        stats.points += pointsPerNoResult;
+                    }
+
+                    const [score] = await db.select().from(scores).where(eq(scores.matchId, match.id)).limit(1);
+                    if (score) {
+                        const isTeamA = match.teamAId === team.id;
+                        stats.runsScored += isTeamA ? (score.teamARuns || 0) : (score.teamBRuns || 0);
+                        stats.oversPlayed += isTeamA ? (score.teamAOversPlayed || 0) : (score.teamBOversPlayed || 0);
+                        stats.runsConceded += isTeamA ? (score.teamBRuns || 0) : (score.teamARuns || 0);
+                        stats.oversBowled += isTeamA ? (score.teamBOversPlayed || 0) : (score.teamAOversPlayed || 0);
+                    }
+                } else {
+                    stats.points += pointsPerNoResult;
+                }
+            }
+
+            let nrr = 0;
+            if (stats.oversPlayed > 0 && stats.oversBowled > 0) {
+                nrr = (stats.runsScored / stats.oversPlayed) - (stats.runsConceded / stats.oversBowled);
+            }
+
+            const [existing] = await db.select().from(pointsTable).where(eq(pointsTable.teamId, team.id)).limit(1);
+            if (existing) {
+                await db.update(pointsTable).set({
+                    matchesPlayed: stats.played,
+                    wins: stats.wins,
+                    losses: stats.losses,
+                    points: stats.points,
+                    nrr: parseFloat(nrr.toFixed(3)),
+                    totalRunsScored: stats.runsScored,
+                    totalOversPlayed: stats.oversPlayed,
+                    totalRunsConceded: stats.runsConceded,
+                    totalOversBowled: stats.oversBowled,
+                }).where(eq(pointsTable.teamId, team.id));
+            } else {
+                await db.insert(pointsTable).values({
+                    teamId: team.id,
+                    matchesPlayed: stats.played,
+                    wins: stats.wins,
+                    losses: stats.losses,
+                    points: stats.points,
+                    nrr: parseFloat(nrr.toFixed(3)),
+                    totalRunsScored: stats.runsScored,
+                    totalOversPlayed: stats.oversPlayed,
+                    totalRunsConceded: stats.runsConceded,
+                    totalOversBowled: stats.oversBowled,
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Points table recalculation failed:', error);
+    }
+}
+
 export async function completeMatch(req: Request, res: Response): Promise<void> {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const { winnerTeamId, manOfTheMatch } = req.body;
 
         const [match] = await db.select().from(matches).where(eq(matches.id, id)).limit(1);
@@ -449,11 +501,6 @@ export async function completeMatch(req: Request, res: Response): Promise<void> 
             res.status(404).json({ error: 'Match not found' });
             return;
         }
-
-        const settings = await db.select().from(tournamentSettings).limit(1);
-        const pointsPerWin = settings[0]?.pointsPerWin || 2;
-        const pointsPerLoss = settings[0]?.pointsPerLoss || 0;
-        const pointsPerNoResult = settings[0]?.pointsPerNoResult || 1;
 
         // Handle no_result or postponed
         if (req.body.status === 'no_result' || req.body.status === 'postponed' || !winnerTeamId) {
@@ -463,15 +510,7 @@ export async function completeMatch(req: Request, res: Response): Promise<void> 
                 manOfTheMatch: null,
             }).where(eq(matches.id, id));
 
-            for (const teamId of [match.teamAId, match.teamBId]) {
-                const [existing] = await db.select().from(pointsTable).where(eq(pointsTable.teamId, teamId)).limit(1);
-                if (existing) {
-                    await db.update(pointsTable).set({
-                        matchesPlayed: existing.matchesPlayed + 1,
-                        points: existing.points + pointsPerNoResult,
-                    }).where(eq(pointsTable.teamId, teamId));
-                }
-            }
+            await recalculatePointsTable();
             res.json({ message: 'Match marked as no result/postponed and points table updated' });
             return;
         }
@@ -482,53 +521,7 @@ export async function completeMatch(req: Request, res: Response): Promise<void> 
             manOfTheMatch: manOfTheMatch || null,
         }).where(eq(matches.id, id));
 
-        const [score] = await db.select().from(scores).where(eq(scores.matchId, id)).limit(1);
-        if (!score) {
-            res.json({ message: 'Match completed (no score found)' });
-            return;
-        }
-
-        const loserTeamId = winnerTeamId === match.teamAId ? match.teamBId : match.teamAId;
-
-        for (const teamId of [match.teamAId, match.teamBId]) {
-            const isWinner = teamId === winnerTeamId;
-            const isTeamA = teamId === match.teamAId;
-
-            const runsScored = isTeamA ? score.teamARuns : score.teamBRuns;
-            const oversPlayed = isTeamA ? score.teamAOversPlayed : score.teamBOversPlayed;
-            const runsConceded = isTeamA ? score.teamBRuns : score.teamARuns;
-            const oversBowled = isTeamA ? score.teamBOversPlayed : score.teamAOversPlayed;
-
-            const [existing] = await db.select().from(pointsTable).where(eq(pointsTable.teamId, teamId)).limit(1);
-
-            if (existing) {
-                const newMatchesPlayed = existing.matchesPlayed + 1;
-                const newWins = existing.wins + (isWinner ? 1 : 0);
-                const newLosses = existing.losses + (isWinner ? 0 : 1);
-                const newPoints = existing.points + (isWinner ? pointsPerWin : pointsPerLoss);
-                const newTotalRunsScored = existing.totalRunsScored + runsScored;
-                const newTotalOversPlayed = existing.totalOversPlayed + oversPlayed;
-                const newTotalRunsConceded = existing.totalRunsConceded + runsConceded;
-                const newTotalOversBowled = existing.totalOversBowled + oversBowled;
-
-                let nrr = 0;
-                if (newTotalOversPlayed > 0 && newTotalOversBowled > 0) {
-                    nrr = (newTotalRunsScored / newTotalOversPlayed) - (newTotalRunsConceded / newTotalOversBowled);
-                }
-
-                await db.update(pointsTable).set({
-                    matchesPlayed: newMatchesPlayed,
-                    wins: newWins,
-                    losses: newLosses,
-                    points: newPoints,
-                    nrr: parseFloat(nrr.toFixed(3)),
-                    totalRunsScored: newTotalRunsScored,
-                    totalOversPlayed: newTotalOversPlayed,
-                    totalRunsConceded: newTotalRunsConceded,
-                    totalOversBowled: newTotalOversBowled,
-                }).where(eq(pointsTable.teamId, teamId));
-            }
-        }
+        await recalculatePointsTable();
 
         res.json({ message: 'Match completed and points table updated' });
     } catch (error) {
@@ -638,7 +631,7 @@ export async function addCommentary(req: Request, res: Response): Promise<void> 
 
 export async function getCommentary(req: Request, res: Response): Promise<void> {
     try {
-        const { matchId } = req.params;
+        const matchId = req.params.matchId as string;
         const entries = await db.select().from(commentary)
             .where(eq(commentary.matchId, matchId))
             .orderBy(desc(commentary.createdAt));
@@ -677,7 +670,7 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
             totalRunsConceded: players.totalRunsConceded,
             totalSixes: players.totalSixes,
             totalFours: players.totalFours,
-            totalCatches: players.totalCatches,
+            totalCatches: players.totalCatches, teamToken: players.teamToken,
             createdAt: players.createdAt,
         }).from(players);
         const allMatches = await db.select({
@@ -819,60 +812,82 @@ export async function updateTournamentSettings(req: Request, res: Response): Pro
 
 export async function getMatchPlayerStats(req: Request, res: Response): Promise<void> {
     try {
-        const { id } = req.params;
-        const stats = await db
-            .select({
-                id: matchPlayerStats.id,
-                matchId: matchPlayerStats.matchId,
-                playerId: matchPlayerStats.playerId,
-                teamId: matchPlayerStats.teamId,
-                runsScored: matchPlayerStats.runsScored,
-                ballsFaced: matchPlayerStats.ballsFaced,
-                fours: matchPlayerStats.fours,
-                sixes: matchPlayerStats.sixes,
-                wickets: matchPlayerStats.wickets,
-                runsConceded: matchPlayerStats.runsConceded,
-                ballsBowled: matchPlayerStats.ballsBowled,
-                catches: matchPlayerStats.catches,
-                playerName: users.name,
-                playerRole: players.role,
-                profileImage: players.profileImage,
-            })
-            .from(matchPlayerStats)
-            .innerJoin(players, eq(matchPlayerStats.playerId, players.id))
-            .innerJoin(users, eq(players.userId, users.id))
-            .where(eq(matchPlayerStats.matchId, id));
+        const id = req.params.id as string;
+        const baseStats = await db.select().from(matchPlayerStats).where(eq(matchPlayerStats.matchId, id));
 
-        res.json(stats);
-    } catch (error) {
-        console.error('Failed to get match player stats:', error);
+        const hydratedStats = await Promise.all(baseStats.map(async (stat) => {
+            const playerRecs = await db.select().from(players).where(eq(players.id, stat.playerId)).limit(1);
+            const player = playerRecs[0];
+            let playerName = 'Unknown Player';
+            let playerRole = 'Batsman';
+            let profileImage = null;
+
+            if (player) {
+                const userRecs = await db.select().from(users).where(eq(users.id, player.userId)).limit(1);
+                playerName = userRecs[0]?.name || 'Unknown User';
+                playerRole = player.role || 'Batsman';
+                profileImage = player.profileImage;
+            }
+
+            return {
+                ...stat,
+                playerName,
+                playerRole,
+                profileImage
+            };
+        }));
+
+        res.json(hydratedStats);
+    } catch (error: any) {
+        console.error('[getMatchPlayerStats] Critical failure:', error);
         res.status(500).json({ error: 'Failed' });
     }
 }
 
 export async function updateMatchPlayerStats(req: Request, res: Response): Promise<void> {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const { stats } = req.body; // Array of stat objects
 
         // Delete existing and insert new
         await db.delete(matchPlayerStats).where(eq(matchPlayerStats.matchId, id));
 
         if (stats && stats.length > 0) {
-            const inserts = stats.map((s: any) => ({
-                matchId: id,
-                playerId: s.playerId,
-                teamId: s.teamId,
-                runsScored: s.runsScored || 0,
-                ballsFaced: s.ballsFaced || 0,
-                fours: s.fours || 0,
-                sixes: s.sixes || 0,
-                wickets: s.wickets || 0,
-                runsConceded: s.runsConceded || 0,
-                ballsBowled: s.ballsBowled || 0,
-                catches: s.catches || 0,
-            }));
-            await db.insert(matchPlayerStats).values(inserts);
+            const inserts: any[] = [];
+
+            for (const s of stats) {
+                let teamId = s.teamId;
+
+                // If teamId is missing, try to find it from the player record
+                if (!teamId) {
+                    const [p] = await db.select({ teamId: players.teamId }).from(players).where(eq(players.id, s.playerId)).limit(1);
+                    teamId = p?.teamId;
+                }
+
+                // Skip if we still don't have a teamId (shouldn't happen for valid match players)
+                if (!teamId) {
+                    console.warn(`[updateMatchPlayerStats] Skipping player ${s.playerId} because no teamId was found.`);
+                    continue;
+                }
+
+                inserts.push({
+                    matchId: id,
+                    playerId: s.playerId,
+                    teamId: teamId,
+                    runsScored: s.runsScored || 0,
+                    ballsFaced: s.ballsFaced || 0,
+                    fours: s.fours || 0,
+                    sixes: s.sixes || 0,
+                    wickets: s.wickets || 0,
+                    runsConceded: s.runsConceded || 0,
+                    ballsBowled: s.ballsBowled || 0,
+                    catches: s.catches || 0,
+                });
+            }
+
+            if (inserts.length > 0) {
+                await db.insert(matchPlayerStats).values(inserts);
+            }
 
             // Recompute total stats for all players involved
             for (const s of stats) {

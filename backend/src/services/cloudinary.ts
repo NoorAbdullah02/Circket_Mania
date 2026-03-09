@@ -17,9 +17,10 @@ export async function uploadImage(fileBuffer: Buffer, folder: string = 'cricket-
             },
             (error, result) => {
                 if (error) {
-                    console.error('Cloudinary upload error:', error);
-                    resolve(`https://ui-avatars.com/api/?name=Player&background=random&color=fff`);
+                    console.error('❌ Cloudinary upload error:', error);
+                    reject(error);
                 } else {
+                    console.log(`✅ Cloudinary upload success: ${result!.secure_url}`);
                     resolve(result!.secure_url);
                 }
             }
