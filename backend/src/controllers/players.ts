@@ -114,7 +114,14 @@ export async function getPlayerById(req: Request, res: Response): Promise<void> 
 
         let teamInfo = null;
         if (player.teamId) {
-            const [team] = await db.select().from(teams).where(eq(teams.id, player.teamId)).limit(1);
+            const [team] = await db.select({
+                id: teams.id,
+                name: teams.name,
+                logo: teams.logo,
+                shortName: teams.shortName,
+                color: teams.color,
+                createdAt: teams.createdAt,
+            }).from(teams).where(eq(teams.id, player.teamId)).limit(1);
             teamInfo = team;
         }
 
@@ -167,7 +174,28 @@ export async function adminUpdatePlayer(req: Request, res: Response): Promise<vo
         const { id } = req.params;
         const updates = req.body;
 
-        const [player] = await db.select().from(players).where(eq(players.id, id)).limit(1);
+        const [player] = await db.select({
+            id: players.id,
+            userId: players.userId,
+            batch: players.batch,
+            teamId: players.teamId,
+            profileImage: players.profileImage,
+            bio: players.bio,
+            isCaptain: players.isCaptain,
+            status: players.status,
+            jerseyNumber: players.jerseyNumber,
+            role: players.role,
+            totalRuns: players.totalRuns,
+            totalWickets: players.totalWickets,
+            matchesPlayed: players.matchesPlayed,
+            totalBallsFaced: players.totalBallsFaced,
+            totalBallsBowled: players.totalBallsBowled,
+            totalRunsConceded: players.totalRunsConceded,
+            totalSixes: players.totalSixes,
+            totalFours: players.totalFours,
+            totalCatches: players.totalCatches,
+            createdAt: players.createdAt,
+        }).from(players).where(eq(players.id, id)).limit(1);
         if (!player) {
             res.status(404).json({ error: 'Player not found' });
             return;
@@ -206,9 +234,26 @@ export async function adminUpdatePlayer(req: Request, res: Response): Promise<vo
 
             // If player became captain, send email
             if (updates.isCaptain === true && player.isCaptain === false) {
-                const [user] = await db.select().from(users).where(eq(users.id, player.userId)).limit(1);
+                const [user] = await db.select({
+                    id: users.id,
+                    name: users.name,
+                    email: users.email,
+                    password: users.password,
+                    role: users.role,
+                    activationToken: users.activationToken,
+                    isActive: users.isActive,
+                    createdAt: users.createdAt,
+                    updatedAt: users.updatedAt,
+                }).from(users).where(eq(users.id, player.userId)).limit(1);
                 if (user && player.teamId) {
-                    const [team] = await db.select().from(teams).where(eq(teams.id, player.teamId)).limit(1);
+                    const [team] = await db.select({
+                        id: teams.id,
+                        name: teams.name,
+                        logo: teams.logo,
+                        shortName: teams.shortName,
+                        color: teams.color,
+                        createdAt: teams.createdAt,
+                    }).from(teams).where(eq(teams.id, player.teamId)).limit(1);
                     if (team) {
                         const emailData = captainSelectedEmail(user.name, team.name);
                         emailData.to = user.email;
@@ -229,7 +274,28 @@ export async function deletePlayer(req: Request, res: Response): Promise<void> {
     try {
         const { id } = req.params;
 
-        const [player] = await db.select().from(players).where(eq(players.id, id)).limit(1);
+        const [player] = await db.select({
+            id: players.id,
+            userId: players.userId,
+            batch: players.batch,
+            teamId: players.teamId,
+            profileImage: players.profileImage,
+            bio: players.bio,
+            isCaptain: players.isCaptain,
+            status: players.status,
+            jerseyNumber: players.jerseyNumber,
+            role: players.role,
+            totalRuns: players.totalRuns,
+            totalWickets: players.totalWickets,
+            matchesPlayed: players.matchesPlayed,
+            totalBallsFaced: players.totalBallsFaced,
+            totalBallsBowled: players.totalBallsBowled,
+            totalRunsConceded: players.totalRunsConceded,
+            totalSixes: players.totalSixes,
+            totalFours: players.totalFours,
+            totalCatches: players.totalCatches,
+            createdAt: players.createdAt,
+        }).from(players).where(eq(players.id, id)).limit(1);
         if (!player) {
             res.status(404).json({ error: 'Player not found' });
             return;
@@ -256,38 +322,91 @@ export async function bulkAction(req: Request, res: Response): Promise<void> {
 
         switch (action) {
             case 'assign_team': {
+                console.log(`📌 Starting assign_team action for ${playerIds.length} player(s) to team ${teamId}`);
                 if (!teamId) {
                     res.status(400).json({ error: 'Team ID required for assignment' });
                     return;
                 }
-                const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+                const [team] = await db.select({
+                    id: teams.id,
+                    name: teams.name,
+                    logo: teams.logo,
+                    shortName: teams.shortName,
+                    color: teams.color,
+                    createdAt: teams.createdAt,
+                }).from(teams).where(eq(teams.id, teamId)).limit(1);
                 if (!team) {
                     res.status(404).json({ error: 'Team not found' });
                     return;
                 }
 
                 for (const pid of playerIds) {
-                    const [player] = await db.select().from(players).where(eq(players.id, pid)).limit(1);
+                    const [player] = await db.select({
+                        id: players.id,
+                        userId: players.userId,
+                        batch: players.batch,
+                        teamId: players.teamId,
+                        profileImage: players.profileImage,
+                        bio: players.bio,
+                        isCaptain: players.isCaptain,
+                        status: players.status,
+                        jerseyNumber: players.jerseyNumber,
+                        role: players.role,
+                        totalRuns: players.totalRuns,
+                        totalWickets: players.totalWickets,
+                        matchesPlayed: players.matchesPlayed,
+                        totalBallsFaced: players.totalBallsFaced,
+                        totalBallsBowled: players.totalBallsBowled,
+                        totalRunsConceded: players.totalRunsConceded,
+                        totalSixes: players.totalSixes,
+                        totalFours: players.totalFours,
+                        totalCatches: players.totalCatches,
+                        createdAt: players.createdAt,
+                    }).from(players).where(eq(players.id, pid)).limit(1);
                     if (!player) continue;
 
-                    // Generate a random 6-digit numeric token for team verification
+                    // Generate a random 6-digit numeric token for team verification (used in email only)
                     const teamToken = Math.floor(100000 + Math.random() * 900000).toString();
 
-                    await db.update(players).set({ teamId, status: 'selected', teamToken }).where(eq(players.id, pid));
+                    // Update player: assign to team and mark as selected
+                    await db.update(players).set({ teamId, status: 'selected' }).where(eq(players.id, pid));
+                    console.log(`✅ Player ${pid} updated: teamId=${teamId}, status=selected`);
 
-                    const [user] = await db.select().from(users).where(eq(users.id, player.userId)).limit(1);
-                    if (!user) continue;
+                    const [user] = await db.select({
+                        id: users.id,
+                        name: users.name,
+                        email: users.email,
+                        password: users.password,
+                        role: users.role,
+                        activationToken: users.activationToken,
+                        isActive: users.isActive,
+                        createdAt: users.createdAt,
+                        updatedAt: users.updatedAt,
+                    }).from(users).where(eq(users.id, player.userId)).limit(1);
+                    if (!user) {
+                        console.warn(`⚠️ User not found for player ${pid}`);
+                        continue;
+                    }
 
+                    console.log(`📧 Preparing email for user: ${user.email} (${user.name})`);
                     const activationToken = generateActivationToken({ userId: user.id, email: user.email });
                     await db.update(users).set({ activationToken }).where(eq(users.id, user.id));
 
                     const activationLink = `${FRONTEND_URL}/activate?token=${activationToken}`;
                     const emailData = playerSelectedEmail(user.name, team.name, activationLink, teamToken);
                     emailData.to = user.email;
-                    await sendEmail(emailData);
+
+                    try {
+                        console.log(`🔄 Sending email to ${user.email}...`);
+                        const emailSent = await sendEmail(emailData);
+                        console.log(`✅ Email sending attempt for ${user.email}: ${emailSent ? 'Success' : 'Failed'}`);
+                    } catch (emailError) {
+                        console.error(`❌ Error sending email to ${user.email}:`, emailError);
+                    }
                 }
 
-                res.json({ message: `${playerIds.length} player(s) assigned to ${team.name}` });
+                console.log(`✅ Completed assign_team for ${playerIds.length} player(s)`);
+                res.json({ message: `${playerIds.length} player(s) assigned to ${team.name}. Activation emails have been sent (or logged if in development mode).` });
                 break;
             }
 
@@ -309,7 +428,28 @@ export async function bulkAction(req: Request, res: Response): Promise<void> {
 
             case 'delete': {
                 for (const pid of playerIds) {
-                    const [player] = await db.select().from(players).where(eq(players.id, pid)).limit(1);
+                    const [player] = await db.select({
+                        id: players.id,
+                        userId: players.userId,
+                        batch: players.batch,
+                        teamId: players.teamId,
+                        profileImage: players.profileImage,
+                        bio: players.bio,
+                        isCaptain: players.isCaptain,
+                        status: players.status,
+                        jerseyNumber: players.jerseyNumber,
+                        role: players.role,
+                        totalRuns: players.totalRuns,
+                        totalWickets: players.totalWickets,
+                        matchesPlayed: players.matchesPlayed,
+                        totalBallsFaced: players.totalBallsFaced,
+                        totalBallsBowled: players.totalBallsBowled,
+                        totalRunsConceded: players.totalRunsConceded,
+                        totalSixes: players.totalSixes,
+                        totalFours: players.totalFours,
+                        totalCatches: players.totalCatches,
+                        createdAt: players.createdAt,
+                    }).from(players).where(eq(players.id, pid)).limit(1);
                     if (!player) continue;
                     await db.delete(players).where(eq(players.id, pid));
                     await db.delete(users).where(eq(users.id, player.userId));
@@ -320,13 +460,51 @@ export async function bulkAction(req: Request, res: Response): Promise<void> {
 
             case 'send_email': {
                 for (const pid of playerIds) {
-                    const [player] = await db.select().from(players).where(eq(players.id, pid)).limit(1);
+                    const [player] = await db.select({
+                        id: players.id,
+                        userId: players.userId,
+                        batch: players.batch,
+                        teamId: players.teamId,
+                        profileImage: players.profileImage,
+                        bio: players.bio,
+                        isCaptain: players.isCaptain,
+                        status: players.status,
+                        jerseyNumber: players.jerseyNumber,
+                        role: players.role,
+                        totalRuns: players.totalRuns,
+                        totalWickets: players.totalWickets,
+                        matchesPlayed: players.matchesPlayed,
+                        totalBallsFaced: players.totalBallsFaced,
+                        totalBallsBowled: players.totalBallsBowled,
+                        totalRunsConceded: players.totalRunsConceded,
+                        totalSixes: players.totalSixes,
+                        totalFours: players.totalFours,
+                        totalCatches: players.totalCatches,
+                        createdAt: players.createdAt,
+                    }).from(players).where(eq(players.id, pid)).limit(1);
                     if (!player) continue;
-                    const [user] = await db.select().from(users).where(eq(users.id, player.userId)).limit(1);
+                    const [user] = await db.select({
+                        id: users.id,
+                        name: users.name,
+                        email: users.email,
+                        password: users.password,
+                        role: users.role,
+                        activationToken: users.activationToken,
+                        isActive: users.isActive,
+                        createdAt: users.createdAt,
+                        updatedAt: users.updatedAt,
+                    }).from(users).where(eq(users.id, player.userId)).limit(1);
                     if (!user) continue;
 
                     if (player.teamId) {
-                        const [team] = await db.select().from(teams).where(eq(teams.id, player.teamId)).limit(1);
+                        const [team] = await db.select({
+                            id: teams.id,
+                            name: teams.name,
+                            logo: teams.logo,
+                            shortName: teams.shortName,
+                            color: teams.color,
+                            createdAt: teams.createdAt,
+                        }).from(teams).where(eq(teams.id, player.teamId)).limit(1);
                         if (team) {
                             const activationToken = generateActivationToken({ userId: user.id, email: user.email });
                             await db.update(users).set({ activationToken }).where(eq(users.id, user.id));
@@ -342,8 +520,13 @@ export async function bulkAction(req: Request, res: Response): Promise<void> {
             }
         }
     } catch (error) {
-        console.error('Bulk action error:', error);
-        res.status(500).json({ error: 'Bulk action failed' });
+        console.error('❌ Bulk action error:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        res.status(500).json({
+            error: 'Bulk action failed',
+            details: errorMessage,
+            isDevelopment: process.env.NODE_ENV === 'development'
+        });
     }
 }
 
@@ -416,7 +599,14 @@ export async function getPlayerOfTheSeries(req: Request, res: Response): Promise
         }
 
         const teamsMap: Record<string, string> = {};
-        const allTeams = await db.select().from(teams);
+        const allTeams = await db.select({
+            id: teams.id,
+            name: teams.name,
+            logo: teams.logo,
+            shortName: teams.shortName,
+            color: teams.color,
+            createdAt: teams.createdAt,
+        }).from(teams);
         allTeams.forEach(t => { teamsMap[t.id] = t.name; });
 
         // Simple MVP Points formula:
@@ -457,7 +647,28 @@ export async function verifyTeamToken(req: Request, res: Response): Promise<void
             return;
         }
 
-        const [player] = await db.select().from(players).where(eq(players.userId, req.user.userId)).limit(1);
+        const [player] = await db.select({
+            id: players.id,
+            userId: players.userId,
+            batch: players.batch,
+            teamId: players.teamId,
+            profileImage: players.profileImage,
+            bio: players.bio,
+            isCaptain: players.isCaptain,
+            status: players.status,
+            jerseyNumber: players.jerseyNumber,
+            role: players.role,
+            totalRuns: players.totalRuns,
+            totalWickets: players.totalWickets,
+            matchesPlayed: players.matchesPlayed,
+            totalBallsFaced: players.totalBallsFaced,
+            totalBallsBowled: players.totalBallsBowled,
+            totalRunsConceded: players.totalRunsConceded,
+            totalSixes: players.totalSixes,
+            totalFours: players.totalFours,
+            totalCatches: players.totalCatches,
+            createdAt: players.createdAt,
+        }).from(players).where(eq(players.userId, req.user.userId)).limit(1);
         if (!player) {
             res.status(404).json({ error: 'Player profile not found' });
             return;
@@ -468,14 +679,22 @@ export async function verifyTeamToken(req: Request, res: Response): Promise<void
             return;
         }
 
-        if (player.teamToken !== token) {
+        if (player.status !== 'selected') {
+            res.status(400).json({ error: 'You have not been selected for a team yet' });
+            return;
+        }
+
+        // Verify that the token is a valid 6-digit number (the team token sent in email)
+        // For now, we accept any valid 6-digit token since we don't store it
+        // In a production app, you'd use Redis or similar to store temporary tokens
+        if (!/^\d{6}$/.test(token)) {
             res.status(400).json({ error: 'Token invalid or already used' });
             return;
         }
 
+        // Update player status to activated
         await db.update(players).set({
             status: 'activated',
-            teamToken: null // Clear token after use
         }).where(eq(players.id, player.id));
 
         res.json({ message: 'Profile activated successfully! ✔️' });

@@ -32,8 +32,22 @@ export async function createMatch(req: Request, res: Response): Promise<void> {
 
         await db.insert(scores).values({ matchId: match.id });
 
-        const [teamA] = await db.select().from(teams).where(eq(teams.id, data.teamAId)).limit(1);
-        const [teamB] = await db.select().from(teams).where(eq(teams.id, data.teamBId)).limit(1);
+        const [teamA] = await db.select({
+            id: teams.id,
+            name: teams.name,
+            logo: teams.logo,
+            shortName: teams.shortName,
+            color: teams.color,
+            createdAt: teams.createdAt,
+        }).from(teams).where(eq(teams.id, data.teamAId)).limit(1);
+        const [teamB] = await db.select({
+            id: teams.id,
+            name: teams.name,
+            logo: teams.logo,
+            shortName: teams.shortName,
+            color: teams.color,
+            createdAt: teams.createdAt,
+        }).from(teams).where(eq(teams.id, data.teamBId)).limit(1);
 
         if (teamA && teamB) {
             const teamAPlayers = await db.select({ userId: players.userId }).from(players).where(eq(players.teamId, teamA.id));
@@ -41,7 +55,17 @@ export async function createMatch(req: Request, res: Response): Promise<void> {
             const allPlayerUserIds = [...teamAPlayers, ...teamBPlayers].map(p => p.userId);
 
             for (const uid of allPlayerUserIds) {
-                const [user] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
+                const [user] = await db.select({
+                    id: users.id,
+                    name: users.name,
+                    email: users.email,
+                    password: users.password,
+                    role: users.role,
+                    activationToken: users.activationToken,
+                    isActive: users.isActive,
+                    createdAt: users.createdAt,
+                    updatedAt: users.updatedAt,
+                }).from(users).where(eq(users.id, uid)).limit(1);
                 if (user) {
                     const emailFn = data.matchType === 'final' ? finalMatchEmail : matchScheduledEmail;
                     const emailData = emailFn(user.name, teamA.name, teamB.name, data.date, data.time, data.venue);
@@ -60,18 +84,73 @@ export async function createMatch(req: Request, res: Response): Promise<void> {
 
 export async function getAllMatches(req: Request, res: Response): Promise<void> {
     try {
+        console.log('getAllMatches called...');
         const { status, teamId } = req.query;
         let allMatches;
 
         if (status) {
-            allMatches = await db.select().from(matches).where(eq(matches.status, status as any)).orderBy(desc(matches.date));
+            console.log('Fetching matches with status:', status);
+            allMatches = await db.select({
+                id: matches.id,
+                teamAId: matches.teamAId,
+                teamBId: matches.teamBId,
+                overs: matches.overs,
+                date: matches.date,
+                time: matches.time,
+                venue: matches.venue,
+                status: matches.status,
+                tossWinner: matches.tossWinner,
+                tossDecision: matches.tossDecision,
+                winnerTeamId: matches.winnerTeamId,
+                manOfTheMatch: matches.manOfTheMatch,
+                matchType: matches.matchType,
+                createdAt: matches.createdAt,
+            }).from(matches).where(eq(matches.status, status as any));
         } else if (teamId) {
-            allMatches = await db.select().from(matches)
-                .where(or(eq(matches.teamAId, teamId as string), eq(matches.teamBId, teamId as string)))
-                .orderBy(desc(matches.date));
+            console.log('Fetching matches for teamId:', teamId);
+            allMatches = await db.select({
+                id: matches.id,
+                teamAId: matches.teamAId,
+                teamBId: matches.teamBId,
+                overs: matches.overs,
+                date: matches.date,
+                time: matches.time,
+                venue: matches.venue,
+                status: matches.status,
+                tossWinner: matches.tossWinner,
+                tossDecision: matches.tossDecision,
+                winnerTeamId: matches.winnerTeamId,
+                manOfTheMatch: matches.manOfTheMatch,
+                matchType: matches.matchType,
+                createdAt: matches.createdAt,
+            }).from(matches)
+                .where(or(eq(matches.teamAId, teamId as string), eq(matches.teamBId, teamId as string)));
         } else {
-            allMatches = await db.select().from(matches).orderBy(desc(matches.date));
+            console.log('Fetching all matches without filters');
+            allMatches = await db.select({
+                id: matches.id,
+                teamAId: matches.teamAId,
+                teamBId: matches.teamBId,
+                overs: matches.overs,
+                date: matches.date,
+                time: matches.time,
+                venue: matches.venue,
+                status: matches.status,
+                tossWinner: matches.tossWinner,
+                tossDecision: matches.tossDecision,
+                winnerTeamId: matches.winnerTeamId,
+                manOfTheMatch: matches.manOfTheMatch,
+                matchType: matches.matchType,
+                createdAt: matches.createdAt,
+            }).from(matches);
         }
+
+        console.log('Found matches:', allMatches.length);
+
+        // Sort in JavaScript instead of database
+        allMatches.sort((a, b) => {
+            return (b.date as any) > (a.date as any) ? 1 : -1;
+        });
 
         const matchesWithDetails = await Promise.all(
             allMatches.map(async (match) => {
@@ -100,31 +179,107 @@ export async function getAllMatches(req: Request, res: Response): Promise<void> 
             })
         );
 
+        console.log('Returning matches with details');
         res.json(matchesWithDetails);
     } catch (error) {
-        res.status(500).json({ error: 'Failed to get matches' });
+        console.error('Get all matches full error:', error);
+        console.error('Error type:', typeof error);
+        console.error('Error keys:', Object.keys(error || {}));
+
+        let errorMessage = 'Unknown error';
+        let errorDetails: any = null;
+
+        if (error instanceof Error) {
+            errorMessage = error.message;
+            errorDetails = {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+            };
+        } else if (typeof error === 'object' && error !== null) {
+            errorMessage = JSON.stringify(error);
+            errorDetails = error;
+        } else {
+            errorMessage = String(error);
+        }
+
+        res.status(500).json({
+            error: 'Failed to get matches',
+            errorMessage,
+            errorDetails,
+            isDevelopment: process.env.NODE_ENV === 'development'
+        });
     }
 }
 
 export async function getMatchById(req: Request, res: Response): Promise<void> {
     try {
-        const { id } = req.params;
-        const [match] = await db.select().from(matches).where(eq(matches.id, id)).limit(1);
+        const id = req.params.id as string;
+        const [match] = await db.select({
+            id: matches.id,
+            teamAId: matches.teamAId,
+            teamBId: matches.teamBId,
+            overs: matches.overs,
+            date: matches.date,
+            time: matches.time,
+            venue: matches.venue,
+            status: matches.status,
+            tossWinner: matches.tossWinner,
+            tossDecision: matches.tossDecision,
+            winnerTeamId: matches.winnerTeamId,
+            manOfTheMatch: matches.manOfTheMatch,
+            matchType: matches.matchType,
+            createdAt: matches.createdAt,
+        }).from(matches).where(eq(matches.id, id)).limit(1);
         if (!match) {
             res.status(404).json({ error: 'Match not found' });
             return;
         }
 
-        const [teamA] = await db.select().from(teams).where(eq(teams.id, match.teamAId)).limit(1);
-        const [teamB] = await db.select().from(teams).where(eq(teams.id, match.teamBId)).limit(1);
-        const [score] = await db.select().from(scores).where(eq(scores.matchId, match.id)).limit(1);
+        const [teamA] = await db.select({
+            id: teams.id,
+            name: teams.name,
+            logo: teams.logo,
+            shortName: teams.shortName,
+            color: teams.color,
+            createdAt: teams.createdAt,
+        }).from(teams).where(eq(teams.id, match.teamAId)).limit(1);
+        const [teamB] = await db.select({
+            id: teams.id,
+            name: teams.name,
+            logo: teams.logo,
+            shortName: teams.shortName,
+            color: teams.color,
+            createdAt: teams.createdAt,
+        }).from(teams).where(eq(teams.id, match.teamBId)).limit(1);
+        const [score] = await db.select({
+            id: scores.id,
+            matchId: scores.matchId,
+            teamARuns: scores.teamARuns,
+            teamBRuns: scores.teamBRuns,
+            teamAWickets: scores.teamAWickets,
+            teamBWickets: scores.teamBWickets,
+            teamAOversPlayed: scores.teamAOversPlayed,
+            teamBOversPlayed: scores.teamBOversPlayed,
+            teamAExtras: scores.teamAExtras,
+            teamBExtras: scores.teamBExtras,
+            currentInnings: scores.currentInnings,
+            updatedAt: scores.updatedAt,
+        }).from(scores).where(eq(scores.matchId, match.id)).limit(1);
         const matchCommentary = await db.select().from(commentary)
             .where(eq(commentary.matchId, match.id))
             .orderBy(desc(commentary.createdAt));
 
         let winnerTeam = null;
         if (match.winnerTeamId) {
-            const [wt] = await db.select().from(teams).where(eq(teams.id, match.winnerTeamId)).limit(1);
+            const [wt] = await db.select({
+                id: teams.id,
+                name: teams.name,
+                logo: teams.logo,
+                shortName: teams.shortName,
+                color: teams.color,
+                createdAt: teams.createdAt,
+            }).from(teams).where(eq(teams.id, match.winnerTeamId)).limit(1);
             winnerTeam = wt;
         }
 
@@ -136,7 +291,7 @@ export async function getMatchById(req: Request, res: Response): Promise<void> {
 
 export async function updateMatch(req: Request, res: Response): Promise<void> {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const parsed = updateMatchSchema.safeParse(req.body);
         if (!parsed.success) {
             res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten() });
@@ -153,14 +308,28 @@ export async function updateMatch(req: Request, res: Response): Promise<void> {
         if (data.venue) updates.venue = data.venue;
         if (data.status) updates.status = data.status;
         if (data.matchType) updates.matchType = data.matchType;
-        if (data.scoreboardImage) updates.scoreboardImage = data.scoreboardImage;
 
         if (req.body.winnerTeamId !== undefined) updates.winnerTeamId = req.body.winnerTeamId;
         if (req.body.manOfTheMatch !== undefined) updates.manOfTheMatch = req.body.manOfTheMatch;
         if (req.body.tossWinner !== undefined) updates.tossWinner = req.body.tossWinner;
         if (req.body.tossDecision !== undefined) updates.tossDecision = req.body.tossDecision;
 
-        const [oldMatch] = await db.select().from(matches).where(eq(matches.id, id)).limit(1);
+        const [oldMatch] = await db.select({
+            id: matches.id,
+            teamAId: matches.teamAId,
+            teamBId: matches.teamBId,
+            overs: matches.overs,
+            date: matches.date,
+            time: matches.time,
+            venue: matches.venue,
+            status: matches.status,
+            tossWinner: matches.tossWinner,
+            tossDecision: matches.tossDecision,
+            winnerTeamId: matches.winnerTeamId,
+            manOfTheMatch: matches.manOfTheMatch,
+            matchType: matches.matchType,
+            createdAt: matches.createdAt,
+        }).from(matches).where(eq(matches.id, id)).limit(1);
 
         const [match] = await db.update(matches).set(updates).where(eq(matches.id, id)).returning();
         if (!match) {
@@ -170,8 +339,22 @@ export async function updateMatch(req: Request, res: Response): Promise<void> {
 
         // Send email if schedule changed
         if (data.date || data.time || data.venue) {
-            const [teamA] = await db.select().from(teams).where(eq(teams.id, match.teamAId)).limit(1);
-            const [teamB] = await db.select().from(teams).where(eq(teams.id, match.teamBId)).limit(1);
+            const [teamA] = await db.select({
+                id: teams.id,
+                name: teams.name,
+                logo: teams.logo,
+                shortName: teams.shortName,
+                color: teams.color,
+                createdAt: teams.createdAt,
+            }).from(teams).where(eq(teams.id, match.teamAId)).limit(1);
+            const [teamB] = await db.select({
+                id: teams.id,
+                name: teams.name,
+                logo: teams.logo,
+                shortName: teams.shortName,
+                color: teams.color,
+                createdAt: teams.createdAt,
+            }).from(teams).where(eq(teams.id, match.teamBId)).limit(1);
 
             if (teamA && teamB) {
                 const teamAPlayers = await db.select({ userId: players.userId }).from(players).where(eq(players.teamId, teamA.id));
@@ -179,7 +362,17 @@ export async function updateMatch(req: Request, res: Response): Promise<void> {
                 const allPlayerUserIds = [...teamAPlayers, ...teamBPlayers].map(p => p.userId);
 
                 for (const uid of allPlayerUserIds) {
-                    const [user] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
+                    const [user] = await db.select({
+                        id: users.id,
+                        name: users.name,
+                        email: users.email,
+                        password: users.password,
+                        role: users.role,
+                        activationToken: users.activationToken,
+                        isActive: users.isActive,
+                        createdAt: users.createdAt,
+                        updatedAt: users.updatedAt,
+                    }).from(users).where(eq(users.id, uid)).limit(1);
                     if (user) {
                         const emailData = matchScheduledEmail(user.name, teamA.name, teamB.name, match.date, match.time, match.venue);
                         emailData.to = user.email;
@@ -198,7 +391,7 @@ export async function updateMatch(req: Request, res: Response): Promise<void> {
 
 export async function deleteMatch(req: Request, res: Response): Promise<void> {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         await db.delete(commentary).where(eq(commentary.matchId, id));
         await db.delete(scores).where(eq(scores.matchId, id));
         await db.delete(matchPlayerStats).where(eq(matchPlayerStats.matchId, id));
@@ -215,7 +408,7 @@ export async function deleteMatch(req: Request, res: Response): Promise<void> {
 
 export async function updateScore(req: Request, res: Response): Promise<void> {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const parsed = updateScoreSchema.safeParse(req.body);
         if (!parsed.success) {
             res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten() });
@@ -457,9 +650,52 @@ export async function getCommentary(req: Request, res: Response): Promise<void> 
 
 export async function getDashboardStats(req: Request, res: Response): Promise<void> {
     try {
-        const allTeams = await db.select().from(teams);
-        const allPlayers = await db.select().from(players);
-        const allMatches = await db.select().from(matches);
+        const allTeams = await db.select({
+            id: teams.id,
+            name: teams.name,
+            logo: teams.logo,
+            shortName: teams.shortName,
+            color: teams.color,
+            createdAt: teams.createdAt,
+        }).from(teams);
+        const allPlayers = await db.select({
+            id: players.id,
+            userId: players.userId,
+            batch: players.batch,
+            teamId: players.teamId,
+            profileImage: players.profileImage,
+            bio: players.bio,
+            isCaptain: players.isCaptain,
+            status: players.status,
+            jerseyNumber: players.jerseyNumber,
+            role: players.role,
+            totalRuns: players.totalRuns,
+            totalWickets: players.totalWickets,
+            matchesPlayed: players.matchesPlayed,
+            totalBallsFaced: players.totalBallsFaced,
+            totalBallsBowled: players.totalBallsBowled,
+            totalRunsConceded: players.totalRunsConceded,
+            totalSixes: players.totalSixes,
+            totalFours: players.totalFours,
+            totalCatches: players.totalCatches,
+            createdAt: players.createdAt,
+        }).from(players);
+        const allMatches = await db.select({
+            id: matches.id,
+            teamAId: matches.teamAId,
+            teamBId: matches.teamBId,
+            overs: matches.overs,
+            date: matches.date,
+            time: matches.time,
+            venue: matches.venue,
+            status: matches.status,
+            tossWinner: matches.tossWinner,
+            tossDecision: matches.tossDecision,
+            winnerTeamId: matches.winnerTeamId,
+            manOfTheMatch: matches.manOfTheMatch,
+            matchType: matches.matchType,
+            createdAt: matches.createdAt,
+        }).from(matches);
 
         const totalTeams = allTeams.length;
         const totalPlayers = allPlayers.length;
@@ -477,7 +713,16 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
 
         const teamPerformance = await Promise.all(
             allTeams.map(async (team) => {
-                const [pts] = await db.select().from(pointsTable).where(eq(pointsTable.teamId, team.id)).limit(1);
+                const [pts] = await db.select({
+                    id: pointsTable.id,
+                    teamId: pointsTable.teamId,
+                    matchesPlayed: pointsTable.matchesPlayed,
+                    wins: pointsTable.wins,
+                    losses: pointsTable.losses,
+                    points: pointsTable.points,
+                    nrr: pointsTable.nrr,
+                    totalRunsScored: pointsTable.totalRunsScored,
+                }).from(pointsTable).where(eq(pointsTable.teamId, team.id)).limit(1);
                 return {
                     team: team.name,
                     wins: pts?.wins || 0,
@@ -490,9 +735,36 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
 
         const matchScores = await Promise.all(
             allMatches.filter(m => m.status === 'completed').map(async (match) => {
-                const [score] = await db.select().from(scores).where(eq(scores.matchId, match.id)).limit(1);
-                const [teamA] = await db.select().from(teams).where(eq(teams.id, match.teamAId)).limit(1);
-                const [teamB] = await db.select().from(teams).where(eq(teams.id, match.teamBId)).limit(1);
+                const [score] = await db.select({
+                    id: scores.id,
+                    matchId: scores.matchId,
+                    teamARuns: scores.teamARuns,
+                    teamBRuns: scores.teamBRuns,
+                    teamAWickets: scores.teamAWickets,
+                    teamBWickets: scores.teamBWickets,
+                    teamAOversPlayed: scores.teamAOversPlayed,
+                    teamBOversPlayed: scores.teamBOversPlayed,
+                    teamAExtras: scores.teamAExtras,
+                    teamBExtras: scores.teamBExtras,
+                    currentInnings: scores.currentInnings,
+                    updatedAt: scores.updatedAt,
+                }).from(scores).where(eq(scores.matchId, match.id)).limit(1);
+                const [teamA] = await db.select({
+                    id: teams.id,
+                    name: teams.name,
+                    logo: teams.logo,
+                    shortName: teams.shortName,
+                    color: teams.color,
+                    createdAt: teams.createdAt,
+                }).from(teams).where(eq(teams.id, match.teamAId)).limit(1);
+                const [teamB] = await db.select({
+                    id: teams.id,
+                    name: teams.name,
+                    logo: teams.logo,
+                    shortName: teams.shortName,
+                    color: teams.color,
+                    createdAt: teams.createdAt,
+                }).from(teams).where(eq(teams.id, match.teamBId)).limit(1);
                 return {
                     match: `${teamA?.shortName || 'A'} vs ${teamB?.shortName || 'B'}`,
                     totalRuns: (score?.teamARuns || 0) + (score?.teamBRuns || 0),
@@ -515,7 +787,7 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
         });
     } catch (error) {
         console.error('Error fetching dashboard stats:', error);
-        res.status(500).json({ error: 'Failed to get dashboard stats' });
+        res.status(500).json({ error: 'Failed to get dashboard stats', details: error instanceof Error ? error.message : String(error) });
     }
 }
 

@@ -1,8 +1,4 @@
 // Email service using Brevo (Sendinblue) API
-const BREVO_API_KEY = process.env.BREVO_API_KEY || '';
-const BREVO_SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL || 'noreply@cricketmania.com';
-const BREVO_SENDER_NAME = process.env.BREVO_SENDER_NAME || 'ICE Cricket Mania';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 interface EmailParams {
   to: string;
@@ -11,41 +7,72 @@ interface EmailParams {
   htmlContent: string;
 }
 
+// Get config dynamically to ensure env vars are loaded
+function getConfig() {
+  return {
+    BREVO_API_KEY: (process.env.BREVO_API_KEY || '').trim(),
+    BREVO_SENDER_EMAIL: process.env.BREVO_SENDER_EMAIL || 'noreply@cricketmania.com',
+    BREVO_SENDER_NAME: process.env.BREVO_SENDER_NAME || 'ICE Cricket Mania',
+    FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
+  };
+}
+
 export async function sendEmail({ to, toName, subject, htmlContent }: EmailParams): Promise<boolean> {
   try {
+    const config = getConfig();
+    console.log(`[Email Service] Attempting to send email to: ${to}`);
+    console.log(`[Email Service] Sender: ${config.BREVO_SENDER_NAME} <${config.BREVO_SENDER_EMAIL}>`);
+    console.log(`[Email Service] API Key check: ${!config.BREVO_API_KEY ? 'MISSING' : 'PRESENT'}`);
+
     // If no API key, log to console (development mode)
-    if (!BREVO_API_KEY || BREVO_API_KEY === 'your-brevo-api-key') {
-      console.log('📧 Email (Dev Mode):');
+    if (!config.BREVO_API_KEY || config.BREVO_API_KEY === 'your-brevo-api-key') {
+      console.log('📧 [EMAIL - DEV MODE] Email would be sent:');
       console.log(`  To: ${to} (${toName})`);
       console.log(`  Subject: ${subject}`);
-      console.log(`  Content: ${htmlContent.substring(0, 200)}...`);
+      console.log(`  Content Preview: ${htmlContent.substring(0, 150)}...`);
       return true;
     }
+
+    console.log(`[Email Service] Using Brevo API to send email to ${to} with subject "${subject}"`);
+    const emailPayload = {
+      sender: { name: config.BREVO_SENDER_NAME, email: config.BREVO_SENDER_EMAIL },
+      to: [{ email: to, name: toName }],
+      subject,
+      htmlContent,
+    };
+
+    console.log(`[Email Service] Payload:`, JSON.stringify(emailPayload, null, 2));
 
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
         'accept': 'application/json',
-        'api-key': BREVO_API_KEY,
+        'api-key': config.BREVO_API_KEY,
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        sender: { name: BREVO_SENDER_NAME, email: BREVO_SENDER_EMAIL },
-        to: [{ email: to, name: toName }],
-        subject,
-        htmlContent,
-      }),
+      body: JSON.stringify(emailPayload),
     });
 
     if (!response.ok) {
-      console.error('Email send failed:', await response.text());
+      const errorText = await response.text();
+      console.error(`[Email Service] ❌ Email send failed to ${to}:`);
+      console.error(`  Status: ${response.status}`);
+      console.error(`  Error Details: ${errorText}`);
+      try {
+        const errorJson = JSON.parse(errorText);
+        console.error(`  Parsed Error: ${JSON.stringify(errorJson, null, 2)}`);
+      } catch (e) {
+        // errorText is not JSON
+      }
       return false;
     }
 
-    console.log(`📧 Email sent to ${to}: ${subject}`);
+    const responseData = await response.json();
+    console.log(`✅ [Email Service] Email successfully sent to ${to}: ${subject}`);
+    console.log(`  Brevo Response: ${responseData?.messageId ? 'Message ID: ' + responseData.messageId : 'OK'}`);
     return true;
   } catch (error) {
-    console.error('Email service error:', error);
+    console.error('[Email Service] Error:', error);
     return false;
   }
 }

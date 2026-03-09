@@ -5,6 +5,7 @@ import { db } from '../db/index.js';
 import { users, players } from '../db/schema.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, generateActivationToken, verifyActivationToken } from '../utils/jwt.js';
 import { registerSchema, loginSchema, activateAccountSchema } from '../schemas/validation.js';
+import { sendEmail } from '../services/email.js';
 
 // POST /auth/register — Students register freely (no token needed)
 export async function register(req: Request, res: Response): Promise<void> {
@@ -227,4 +228,44 @@ export async function getMe(req: Request, res: Response): Promise<void> {
 export async function logout(req: Request, res: Response): Promise<void> {
     res.clearCookie('refreshToken', { path: '/' });
     res.json({ message: 'Logged out successfully' });
+}
+
+// POST /auth/test-email — Send test email (admin only)
+export async function sendTestEmail(req: Request, res: Response): Promise<void> {
+    try {
+        const { testEmail } = req.body;
+
+        if (!testEmail) {
+            res.status(400).json({ error: 'testEmail parameter required' });
+            return;
+        }
+
+        console.log(`\n📧 [TEST EMAIL] Sending test email to: ${testEmail}`);
+
+        const emailSent = await sendEmail({
+            to: testEmail,
+            toName: 'Test User',
+            subject: '🏏 ICE Cricket Mania - Test Email',
+            htmlContent: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; color: #fff; padding: 40px; border-radius: 16px;">
+                    <h1 style="color: #facc15;">🏏 ICE Cricket Mania</h1>
+                    <h2 style="color: #22c55e;">Test Email</h2>
+                    <p style="color: #e2e8f0;">This is a test email to verify the email service is working correctly.</p>
+                    <p style="color: #94a3b8; font-size: 12px;">Sent at: ${new Date().toISOString()}</p>
+                </div>
+            `,
+        });
+
+        console.log(`[TEST EMAIL] Result: ${emailSent ? 'Success ✅' : 'Failed ❌'}`);
+
+        res.json({
+            message: emailSent ? 'Test email sent successfully!' : 'Failed to send test email',
+            status: emailSent ? 'sent' : 'failed',
+            email: testEmail,
+            timestamp: new Date().toISOString(),
+        });
+    } catch (error) {
+        console.error('[TEST EMAIL] Error:', error);
+        res.status(500).json({ error: 'Failed to send test email' });
+    }
 }

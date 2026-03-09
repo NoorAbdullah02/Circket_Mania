@@ -28,7 +28,6 @@ export const players = pgTable('players', {
     bio: text('bio'),
     isCaptain: boolean('is_captain').notNull().default(false),
     status: playerStatusEnum('status').notNull().default('pending'),
-    teamToken: varchar('team_token', { length: 20 }),
     jerseyNumber: integer('jersey_number'),
     role: varchar('player_role', { length: 50 }).default('Batsman'), // Batsman, Bowler, All-rounder, Wicketkeeper
     totalRuns: integer('total_runs').notNull().default(0),
@@ -68,7 +67,6 @@ export const matches = pgTable('matches', {
     winnerTeamId: uuid('winner_team_id').references(() => teams.id),
     manOfTheMatch: uuid('man_of_the_match').references(() => players.id),
     matchType: varchar('match_type', { length: 20 }).default('league'), // league, final
-    scoreboardImage: text('scoreboard_image'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
