@@ -123,8 +123,8 @@ export default function PointsTable() {
                                                     {row.points}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-center text-gray-300">
-                                                {row.nrr > 0 ? `+${row.nrr}` : row.nrr}
+                                            <td className="px-6 py-4 text-center text-gray-300 font-bold">
+                                                {row.nrr > 0 ? `+${row.nrr.toFixed(3)}` : row.nrr.toFixed(3)}
                                             </td>
                                         </motion.tr>
                                     );

@@ -20,6 +20,7 @@ export async function getAllPlayers(req: Request, res: Response): Promise<void> 
                 email: users.email,
                 batch: players.batch,
                 teamId: players.teamId,
+                profileImage: players.profileImage,
                 bio: players.bio,
                 isCaptain: players.isCaptain,
                 userRole: users.role,

@@ -29,6 +29,7 @@ export async function createTeam(req: Request, res: Response): Promise<void> {
             shortName: shortName || name.substring(0, 3).toUpperCase(),
             color: color || '#38bdf8',
             logo: req.body.logo || null,
+            coverPhoto: req.body.coverPhoto || null,
         }).returning();
 
         await db.insert(pointsTable).values({ teamId: team.id });
@@ -117,7 +118,7 @@ export async function getTeamById(req: Request, res: Response): Promise<void> {
 export async function updateTeam(req: Request, res: Response): Promise<void> {
     try {
         const id = req.params.id as string;
-        const { name, shortName, color, logo } = req.body;
+        const { name, shortName, color, logo, coverPhoto } = req.body;
 
         const [team] = await db.update(teams)
             .set({
@@ -125,6 +126,7 @@ export async function updateTeam(req: Request, res: Response): Promise<void> {
                 ...(shortName && { shortName }),
                 ...(color && { color }),
                 ...(logo && { logo }),
+                ...(coverPhoto && { coverPhoto }),
             })
             .where(eq(teams.id, id))
             .returning();

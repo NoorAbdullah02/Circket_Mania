@@ -256,6 +256,7 @@ export async function updateMatch(req: Request, res: Response): Promise<void> {
         if (data.venue) updates.venue = data.venue;
         if (data.status) updates.status = data.status;
         if (data.matchType) updates.matchType = data.matchType;
+        if (data.scoreboardImage !== undefined) updates.scoreboardImage = data.scoreboardImage;
 
         if (req.body.winnerTeamId !== undefined) updates.winnerTeamId = req.body.winnerTeamId;
         if (req.body.manOfTheMatch !== undefined) updates.manOfTheMatch = req.body.manOfTheMatch;
@@ -276,13 +277,18 @@ export async function updateMatch(req: Request, res: Response): Promise<void> {
             winnerTeamId: matches.winnerTeamId,
             manOfTheMatch: matches.manOfTheMatch,
             matchType: matches.matchType,
+            scoreboardImage: matches.scoreboardImage,
             createdAt: matches.createdAt,
         }).from(matches).where(eq(matches.id, id)).limit(1);
 
-        const [match] = await db.update(matches).set(updates).where(eq(matches.id, id)).returning();
-        if (!match) {
-            res.status(404).json({ error: 'Match not found' });
-            return;
+        let match = oldMatch;
+        if (Object.keys(updates).length > 0) {
+            const updatedMatches = await db.update(matches).set(updates).where(eq(matches.id, id)).returning();
+            match = updatedMatches[0];
+            if (!match) {
+                res.status(404).json({ error: 'Match not found' });
+                return;
+            }
         }
 
         // Recalculate standings in case status, teams, or winner changed
@@ -335,8 +341,9 @@ export async function updateMatch(req: Request, res: Response): Promise<void> {
         }
 
         res.json({ message: 'Match updated successfully', match });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to update match' });
+    } catch (error: any) {
+        console.error('Update match error:', error);
+        res.status(500).json({ error: 'Failed to update match', details: error.message });
     }
 }
 

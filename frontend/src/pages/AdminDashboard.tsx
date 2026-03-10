@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Shield, Calendar, Loader2, Database, Plus, Search, Edit, Trash2, Camera, Activity, Crown, Check, X, Star, History } from 'lucide-react';
+import { Users, Shield, Calendar, Loader2, Database, Plus, Search, Edit, Trash2, Camera, Activity, Crown, Check, X, Star, History, User, Award, Zap, Target, Mail, Hash, Flag } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import api from '../api/client';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
@@ -81,14 +81,16 @@ export default function AdminDashboard() {
     const [editingTeam, setEditingTeam] = useState<any>(null);
     const [assigningPlayer, setAssigningPlayer] = useState<any>(null);
     const [editingPlayer, setEditingPlayer] = useState<any>(null);
+    const [viewingPlayer, setViewingPlayer] = useState<any>(null);
     const [editingMatch, setEditingMatch] = useState<any>(null);
     const [showMatchForm, setShowMatchForm] = useState(false);
-    const [newTeam, setNewTeam] = useState({ name: '', shortName: '', color: '#38BDF8', logo: '' });
+    const [newTeam, setNewTeam] = useState({ name: '', shortName: '', color: '#38BDF8', logo: '', coverPhoto: '' });
     const [newMatch, setNewMatch] = useState({
         teamAId: '', teamBId: '', date: '', time: '',
         venue: 'University Central Ground', overs: 10, matchType: 'league'
     });
     const [uploadingLogo, setUploadingLogo] = useState(false);
+    const [uploadingCover, setUploadingCover] = useState(false);
     const [uploadingScoreboard, setUploadingScoreboard] = useState(false);
 
     // Scoring states
@@ -271,6 +273,29 @@ export default function AdminDashboard() {
         }
     };
 
+    const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>, isEditing = false) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            setUploadingCover(true);
+            const uploadData = new FormData();
+            uploadData.append('file', file);
+            const { data } = await api.post('/upload?folder=teams', uploadData);
+
+            if (isEditing) {
+                setEditingTeam({ ...editingTeam, coverPhoto: data.url });
+            } else {
+                setNewTeam({ ...newTeam, coverPhoto: data.url });
+            }
+            toast.success('Cover photo uploaded!');
+        } catch (error) {
+            toast.error('Cover upload failed');
+        } finally {
+            setUploadingCover(false);
+        }
+    };
+
     const handleCreateTeam = (e: React.FormEvent) => {
         e.preventDefault();
         createTeamMutation.mutate(newTeam);
@@ -386,18 +411,23 @@ export default function AdminDashboard() {
                     <p className="text-gray-400 mt-2">Manage tournament parameters and drafting</p>
                 </div>
 
-                <div className="flex gap-2 bg-black/50 p-1.5 rounded-lg border border-white/10 overflow-x-auto custom-scrollbar">
+                <div className="flex gap-2 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/5 overflow-x-auto shadow-2xl relative z-20 custom-scrollbar">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-md font-heading tracking-wider transition-all duration-300 text-sm whitespace-nowrap
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold tracking-widest transition-all duration-300 text-xs uppercase relative overflow-hidden group whitespace-nowrap
                 ${activeTab === tab.id
-                                    ? 'bg-brand-red text-white shadow-[0_0_15px_rgba(255,59,48,0.3)]'
-                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                    ? 'text-white shadow-[0_0_20px_rgba(255,59,48,0.3)]'
+                                    : 'text-gray-500 hover:text-white hover:bg-white/5'
                                 }`}
                         >
-                            {tab.icon} {tab.label}
+                            {activeTab === tab.id && (
+                                <div className="absolute inset-0 bg-gradient-to-r from-brand-red to-orange-500 opacity-100 transition-opacity"></div>
+                            )}
+                            <div className="relative z-10 flex items-center gap-2">
+                                {tab.icon} {tab.label}
+                            </div>
                         </button>
                     ))}
                 </div>
@@ -419,15 +449,18 @@ export default function AdminDashboard() {
                                 <>
                                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                                         {[
-                                            { label: 'Total Franchises', value: stats?.totalTeams, color: 'text-brand-blue' },
-                                            { label: 'Registered Players', value: stats?.totalPlayers, color: 'text-brand-yellow' },
-                                            { label: 'Drafted/Selected', value: stats?.selectedPlayers, color: 'text-emerald-400' },
-                                            { label: 'Matches Scheduled', value: stats?.totalMatches, color: 'text-brand-red' },
+                                            { label: 'Total Franchises', value: stats?.totalTeams, color: 'text-brand-blue', bg: 'bg-brand-blue/20', border: 'hover:border-brand-blue/50 hover:shadow-[0_0_30px_rgba(56,189,248,0.2)]' },
+                                            { label: 'Registered Players', value: stats?.totalPlayers, color: 'text-brand-yellow', bg: 'bg-brand-yellow/20', border: 'hover:border-brand-yellow/50 hover:shadow-[0_0_30px_rgba(255,214,10,0.2)]' },
+                                            { label: 'Drafted/Selected', value: stats?.selectedPlayers, color: 'text-emerald-400', bg: 'bg-emerald-400/20', border: 'hover:border-emerald-400/50 hover:shadow-[0_0_30px_rgba(52,211,153,0.2)]' },
+                                            { label: 'Matches Scheduled', value: stats?.totalMatches, color: 'text-brand-red', bg: 'bg-brand-red/20', border: 'hover:border-brand-red/50 hover:shadow-[0_0_30px_rgba(255,59,48,0.2)]' },
                                         ].map((stat, i) => (
-                                            <Card key={i} className="glass-card hover:border-brand-blue/30 transition-all border-white/10">
-                                                <CardContent className="p-6">
-                                                    <p className="text-gray-400 text-sm font-heading tracking-widest uppercase">{stat.label}</p>
-                                                    <p className={`text-5xl font-bold font-heading mt-2 ${stat.color}`}>{stat.value}</p>
+                                            <Card key={i} className={`relative bg-black/60 backdrop-blur-xl border border-white/5 rounded-3xl transition-all duration-500 overflow-hidden group ${stat.border}`}>
+                                                <div className={`absolute -inset-4 ${stat.bg} blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
+                                                <CardContent className="p-8 relative z-10">
+                                                    <p className="text-gray-500 text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">{stat.label}</p>
+                                                    <div className="flex items-baseline gap-2 mt-4">
+                                                        <p className={`text-5xl md:text-6xl font-heading tracking-widest ${stat.color} filter drop-shadow-lg`}>{stat.value || 0}</p>
+                                                    </div>
                                                 </CardContent>
                                             </Card>
                                         ))}
@@ -542,6 +575,22 @@ export default function AdminDashboard() {
                                                         </div>
                                                         <span className="text-[10px] text-gray-400 uppercase mt-1">Team Logo</span>
                                                     </div>
+                                                    <div className="flex flex-col items-center">
+                                                        <div className="relative w-28 h-20 group">
+                                                            <div className="relative w-full h-full rounded-lg bg-black border border-white/20 flex items-center justify-center overflow-hidden">
+                                                                {newTeam.coverPhoto ? (
+                                                                    <img src={newTeam.coverPhoto} alt="Cover Preview" className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <Camera className="w-6 h-6 text-gray-500" />
+                                                                )}
+                                                                <label className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                                                                    {uploadingCover ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
+                                                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleCoverUpload(e)} />
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                        <span className="text-[10px] text-gray-400 uppercase mt-1">Cover Photo</span>
+                                                    </div>
                                                     <div className="space-y-2 md:col-span-1">
                                                         <Label className="text-gray-400 uppercase text-xs tracking-widest">Team Name</Label>
                                                         <Input
@@ -555,8 +604,9 @@ export default function AdminDashboard() {
                                                     <div className="space-y-2">
                                                         <Label className="text-gray-400 uppercase text-xs tracking-widest">Short Name</Label>
                                                         <Input
-                                                            placeholder="DGL"
-                                                            maxLength={3}
+                                                            placeholder="Dhaka GL"
+                                                            maxLength={8}
+                                                            minLength={6}
                                                             value={newTeam.shortName}
                                                             onChange={(e) => setNewTeam({ ...newTeam, shortName: e.target.value.toUpperCase() })}
                                                             required
@@ -570,11 +620,6 @@ export default function AdminDashboard() {
                                                                 className="w-10 h-10 p-1 bg-black/40 border-white/20"
                                                                 value={newTeam.color}
                                                                 onChange={(e) => setNewTeam({ ...newTeam, color: e.target.value })}
-                                                            />
-                                                            <Input
-                                                                value={newTeam.color}
-                                                                onChange={(e) => setNewTeam({ ...newTeam, color: e.target.value })}
-                                                                className="text-xs"
                                                             />
                                                         </div>
                                                     </div>
@@ -613,6 +658,22 @@ export default function AdminDashboard() {
                                                         </div>
                                                         <span className="text-[10px] text-gray-400 uppercase mt-1">Update Logo</span>
                                                     </div>
+                                                    <div className="flex flex-col items-center">
+                                                        <div className="relative w-28 h-20 group">
+                                                            <div className="relative w-full h-full rounded-lg bg-black border border-white/20 flex items-center justify-center overflow-hidden">
+                                                                {editingTeam.coverPhoto ? (
+                                                                    <img src={editingTeam.coverPhoto} alt="Cover Preview" className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <Camera className="w-6 h-6 text-gray-500" />
+                                                                )}
+                                                                <label className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                                                                    {uploadingCover ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
+                                                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleCoverUpload(e, true)} />
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                        <span className="text-[10px] text-gray-400 uppercase mt-1">Cover Photo</span>
+                                                    </div>
                                                     <div className="space-y-2 md:col-span-1">
                                                         <Label className="text-gray-400 uppercase text-xs tracking-widest">Team Name</Label>
                                                         <Input
@@ -625,7 +686,8 @@ export default function AdminDashboard() {
                                                     <div className="space-y-2">
                                                         <Label className="text-gray-400 uppercase text-xs tracking-widest">Short Name</Label>
                                                         <Input
-                                                            maxLength={3}
+                                                            maxLength={8}
+                                                            minLength={6}
                                                             value={editingTeam.shortName}
                                                             onChange={(e) => setEditingTeam({ ...editingTeam, shortName: e.target.value.toUpperCase() })}
                                                             required
@@ -636,13 +698,9 @@ export default function AdminDashboard() {
                                                         <div className="flex gap-2">
                                                             <Input
                                                                 type="color"
+                                                                className="w-10 h-10 p-1 bg-black/40 border-white/20"
                                                                 value={editingTeam.color}
                                                                 onChange={(e) => setEditingTeam({ ...editingTeam, color: e.target.value })}
-                                                            />
-                                                            <Input
-                                                                value={editingTeam.color}
-                                                                onChange={(e) => setEditingTeam({ ...editingTeam, color: e.target.value })}
-                                                                className="text-xs"
                                                             />
                                                         </div>
                                                     </div>
@@ -666,33 +724,42 @@ export default function AdminDashboard() {
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                                     {teams?.map((team: any) => (
-                                        <Card key={team.id} className="glass-card group overflow-hidden">
-                                            <div className="h-24 relative overflow-hidden">
+                                        <Card key={team.id} className="relative bg-black/60 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden group transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl">
+                                            <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-700 blur-3xl pointer-events-none" style={{ backgroundColor: team.color || '#38BDF8' }}></div>
+                                            <div className="h-32 relative overflow-hidden">
                                                 <div
-                                                    className="absolute inset-0 opacity-40"
-                                                    style={{ backgroundColor: team.color || '#38BDF8' }}
+                                                    className="absolute inset-x-0 bottom-0 h-full bg-gradient-to-t from-black to-transparent z-10"
                                                 />
-                                                <div className="absolute top-2 right-2 flex gap-1 z-20">
-                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 bg-black/40 hover:bg-brand-yellow hover:text-black" onClick={() => setEditingTeam(team)}>
-                                                        <Edit className="w-3 h-3" />
+                                                <div
+                                                    className="absolute inset-0 opacity-60 z-0 group-hover:scale-110 transition-transform duration-700"
+                                                    style={{ backgroundColor: team.color || '#38BDF8', backgroundImage: team.coverPhoto ? `url(${team.coverPhoto})` : 'linear-gradient(to top right, rgba(0,0,0,0.8), transparent)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}
+                                                />
+                                                <div className="absolute top-4 right-4 flex gap-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-y-2 group-hover:translate-y-0">
+                                                    <Button variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-full bg-black/60 text-white hover:bg-white hover:text-black backdrop-blur-md shadow-lg" onClick={() => setEditingTeam(team)}>
+                                                        <Edit className="w-4 h-4" />
                                                     </Button>
-                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 bg-black/40 hover:bg-brand-red text-white" onClick={() => { if (confirm('Delete team?')) deleteTeamMutation.mutate(team.id); }}>
-                                                        <Trash2 className="w-3 h-3" />
+                                                    <Button variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-full bg-black/60 text-white hover:bg-brand-red hover:text-white backdrop-blur-md shadow-lg" onClick={() => { if (confirm('Delete team?')) deleteTeamMutation.mutate(team.id); }}>
+                                                        <Trash2 className="w-4 h-4" />
                                                     </Button>
                                                 </div>
                                             </div>
-                                            <CardContent className="px-6 pb-6 relative pt-0">
-                                                <img
-                                                    src={team.logo || `https://ui-avatars.com/api/?name=${team.name}&background=random`}
-                                                    alt={team.name}
-                                                    className="w-20 h-20 rounded-full bg-black border-4 border-black -mt-10 mx-auto object-cover relative z-10 glass-panel shadow-xl group-hover:shadow-[0_0_20px_rgba(10,132,255,0.4)] transition-all"
-                                                />
-                                                <div className="text-center mt-4">
-                                                    <h3 className="text-2xl font-heading tracking-widest text-white">{team.name}</h3>
-                                                    <p className="text-brand-yellow font-bold tracking-widest uppercase">{team.shortName}</p>
-                                                    <div className="mt-4 flex flex-col items-center gap-2 text-xs text-gray-500 uppercase tracking-tighter">
-                                                        <span>Players: {team.players?.length || 0}</span>
-                                                        <span className="w-16 h-1 rounded-full opacity-70" style={{ backgroundColor: team.color }}></span>
+                                            <CardContent className="px-8 pb-8 relative pt-0 z-20">
+                                                <div className="relative w-28 h-28 mx-auto -mt-14 group-hover:-mt-16 transition-all duration-500">
+                                                    <div className="absolute inset-0 rounded-full blur-md opacity-50 bg-black group-hover:opacity-100 transition-all duration-500" style={{ backgroundColor: team.color }}></div>
+                                                    <img
+                                                        src={team.logo || `https://ui-avatars.com/api/?name=${team.name}&background=random`}
+                                                        alt={team.name}
+                                                        className="w-full h-full rounded-full bg-black border-[3px] border-white/10 object-cover relative z-10 shadow-2xl transition-transform duration-500"
+                                                    />
+                                                </div>
+                                                <div className="text-center mt-6">
+                                                    <h3 className="text-2xl font-heading tracking-[0.1em] text-white uppercase group-hover:text-shadow-sm transition-all" style={{ textShadow: `0 0 10px ${team.color}40` }}>{team.name}</h3>
+                                                    <p className="font-bold tracking-[0.3em] uppercase mt-1" style={{ color: team.color }}>{team.shortName}</p>
+                                                    <div className="mt-8 flex flex-col items-center gap-3">
+                                                        <div className="flex gap-1.5 items-center bg-white/5 py-1.5 px-4 rounded-full border border-white/5">
+                                                            <Users className="w-3.5 h-3.5 text-gray-400" />
+                                                            <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Roster: <span className="text-white ml-1">{team.players?.length || 0}/15</span></span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </CardContent>
@@ -771,31 +838,37 @@ export default function AdminDashboard() {
                             {loadingPlayers ? (
                                 <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-brand-yellow" /></div>
                             ) : (
-                                <div className="overflow-x-auto glass-card rounded-xl">
-                                    <table className="w-full text-left border-collapse">
+                                <div className="overflow-x-auto bg-black/60 backdrop-blur-xl border border-white/5 rounded-3xl shadow-2xl relative">
+                                    <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none rounded-3xl"></div>
+                                    <table className="w-full text-left border-collapse whitespace-nowrap relative z-10">
                                         <thead>
-                                            <tr className="bg-black/60 border-b border-white/10 uppercase text-xs tracking-widest font-heading text-gray-400">
-                                                <th className="px-6 py-4">Player</th>
-                                                <th className="px-6 py-4">Batch</th>
-                                                <th className="px-6 py-4">Role</th>
-                                                <th className="px-6 py-4">Status</th>
-                                                <th className="px-6 py-4 text-right">Actions</th>
+                                            <tr className="bg-white/5 border-b border-white/5 uppercase text-[10px] tracking-[0.2em] font-bold text-brand-yellow/80">
+                                                <th className="px-8 py-6">Player</th>
+                                                <th className="px-8 py-6">Batch</th>
+                                                <th className="px-8 py-6">Role</th>
+                                                <th className="px-8 py-6">Status</th>
+                                                <th className="px-8 py-6 text-right">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-white/5">
                                             {filteredPlayers?.map((player: any) => (
-                                                <tr key={player.id} className="hover:bg-white/5 transition-colors">
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-full bg-black/50 border border-white/10 flex items-center justify-center text-white font-heading overflow-hidden">
-                                                                {player.profileImage ? <img src={player.profileImage} className="w-full h-full object-cover" /> : player.name?.charAt(0)}
+                                                <tr key={player.id} className="hover:bg-white/[0.03] transition-colors group cursor-default">
+                                                    <td className="px-8 py-5">
+                                                        <div className="flex items-center gap-4">
+                                                            <div
+                                                                className="w-12 h-12 rounded-full bg-black/50 border-[3px] border-white/10 flex items-center justify-center text-white font-heading overflow-hidden shadow-lg group-hover:scale-110 group-hover:border-brand-yellow/50 transition-all duration-300 relative cursor-pointer"
+                                                                onClick={() => setViewingPlayer(player)}
+                                                                title="View Player Profile"
+                                                            >
+                                                                <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none z-10"></div>
+                                                                {player.profileImage ? <img src={player.profileImage} className="w-full h-full object-cover relative z-0" /> : <div className="w-full h-full bg-gradient-to-br from-brand-blue to-accent flex items-center justify-center text-xl">{player.name?.charAt(0)}</div>}
                                                             </div>
                                                             <div>
-                                                                <div className="text-white font-medium flex items-center gap-2">
+                                                                <div className="text-white font-bold tracking-wider flex items-center gap-2 text-sm">
                                                                     {player.name}
-                                                                    {player.userRole === 'admin' && <Crown className="w-3 h-3 text-brand-yellow" />}
+                                                                    {player.userRole === 'admin' && <Crown className="w-3.5 h-3.5 text-brand-yellow drop-shadow-[0_0_8px_rgba(255,214,10,0.8)]" />}
                                                                 </div>
-                                                                <div className="text-xs text-gray-500">{player.email}</div>
+                                                                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">{player.email}</div>
                                                             </div>
                                                         </div>
                                                     </td>
@@ -1169,6 +1242,187 @@ export default function AdminDashboard() {
                 )}
             </AnimatePresence>
 
+            {/* View Player Detailed Modal */}
+            <AnimatePresence>
+                {viewingPlayer && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            className="bg-brand-bg border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+                        >
+                            {/* Modal Header/Profile Head */}
+                            <div className="relative h-40 bg-gradient-to-br from-brand-blue/20 to-brand-yellow/20 p-6 flex items-end">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="absolute top-4 right-4 text-white hover:bg-white/10"
+                                    onClick={() => setViewingPlayer(null)}
+                                >
+                                    <X className="w-5 h-5" />
+                                </Button>
+
+                                <div className="flex gap-6 items-end">
+                                    <div className="w-24 h-24 rounded-2xl bg-black border-[3px] border-white/20 overflow-hidden shadow-2xl translate-y-8">
+                                        {viewingPlayer.profileImage ? (
+                                            <img src={viewingPlayer.profileImage} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full bg-brand-blue flex items-center justify-center text-3xl font-heading text-white">
+                                                {viewingPlayer.name?.charAt(0)}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="pb-2">
+                                        <h3 className="text-2xl font-heading text-white tracking-widest uppercase flex items-center gap-2">
+                                            {viewingPlayer.name}
+                                            {viewingPlayer.userRole === 'admin' && <Crown className="w-5 h-5 text-brand-yellow" />}
+                                        </h3>
+                                        <div className="flex items-center gap-3 text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">
+                                            <span className="text-brand-yellow">{viewingPlayer.role || 'Undecided'}</span>
+                                            <span className="w-1 h-1 bg-gray-600 rounded-full"></span>
+                                            <span>Batch {viewingPlayer.batch}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Modal Body (Scrollable) */}
+                            <div className="p-8 pt-12 overflow-y-auto custom-scrollbar space-y-8">
+                                {/* Basic Info */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div className="bg-white/5 p-4 rounded-xl border border-white/10 flex items-center gap-4">
+                                        <Mail className="w-4 h-4 text-brand-yellow" />
+                                        <div className="overflow-hidden">
+                                            <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Email Address</div>
+                                            <div className="text-xs text-white truncate">{viewingPlayer.email}</div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white/5 p-4 rounded-xl border border-white/10 flex items-center gap-4">
+                                        <Hash className="w-4 h-4 text-brand-blue" />
+                                        <div>
+                                            <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Jersey Number</div>
+                                            <div className="text-xs text-white">#{viewingPlayer.jerseyNumber || '--'}</div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white/5 p-4 rounded-xl border border-white/10 flex items-center gap-4">
+                                        <Shield className="w-4 h-4 text-emerald-400" />
+                                        <div>
+                                            <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Team Status</div>
+                                            <div className="text-[10px] text-white uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/20 inline-block mt-1">
+                                                {viewingPlayer.status}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Bio Section */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-brand-yellow/80">
+                                        <User className="w-3 h-3" /> About Player
+                                    </div>
+                                    <div className="bg-white/5 p-5 rounded-xl border border-white/5 text-sm text-gray-300 leading-relaxed italic">
+                                        {viewingPlayer.bio || "No biography provided yet for this player."}
+                                    </div>
+                                </div>
+
+                                {/* Stats Grid */}
+                                <div className="space-y-6">
+                                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-brand-yellow/80">
+                                        <Activity className="w-3 h-3" /> Career Overview
+                                    </div>
+
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div className="bg-black/40 p-4 rounded-2xl border border-white/10 text-center">
+                                            <div className="text-2xl font-heading text-white">{viewingPlayer.matchesPlayed || 0}</div>
+                                            <div className="text-[10px] text-gray-500 uppercase font-bold mt-1">Matches</div>
+                                        </div>
+                                        <div className="bg-black/40 p-4 rounded-2xl border border-white/10 text-center">
+                                            <div className="text-2xl font-heading text-brand-blue">{viewingPlayer.totalRuns || 0}</div>
+                                            <div className="text-[10px] text-gray-500 uppercase font-bold mt-1">Runs</div>
+                                        </div>
+                                        <div className="bg-black/40 p-4 rounded-2xl border border-white/10 text-center">
+                                            <div className="text-2xl font-heading text-brand-yellow">{viewingPlayer.totalWickets || 0}</div>
+                                            <div className="text-[10px] text-gray-500 uppercase font-bold mt-1">Wickets</div>
+                                        </div>
+                                        <div className="bg-black/40 p-4 rounded-2xl border border-white/10 text-center">
+                                            <div className="text-2xl font-heading text-emerald-400">{viewingPlayer.totalCatches || 0}</div>
+                                            <div className="text-[10px] text-gray-500 uppercase font-bold mt-1">Catches</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Batting Detailed */}
+                                        <div className="bg-white/5 rounded-2xl p-6 border border-white/5 space-y-4">
+                                            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                                                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-brand-blue">
+                                                    <Zap className="w-3 h-3" /> Batting Performance
+                                                </div>
+                                                <div className="text-xs font-bold text-white">
+                                                    S/R: {viewingPlayer.totalBallsFaced > 0
+                                                        ? ((viewingPlayer.totalRuns / viewingPlayer.totalBallsFaced) * 100).toFixed(2)
+                                                        : '0.00'}
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <div className="text-[10px] text-gray-500 uppercase font-bold">Balls Faced</div>
+                                                    <div className="text-sm text-white font-heading">{viewingPlayer.totalBallsFaced || 0}</div>
+                                                </div>
+                                                <div>
+                                                    <div className="text-[10px] text-gray-500 uppercase font-bold">Total Fours</div>
+                                                    <div className="text-sm text-white font-heading">{viewingPlayer.totalFours || 0}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Bowling Detailed */}
+                                        <div className="bg-white/5 rounded-2xl p-6 border border-white/5 space-y-4">
+                                            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                                                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-brand-yellow">
+                                                    <Target className="w-3 h-3" /> Bowling Skills
+                                                </div>
+                                                <div className="text-xs font-bold text-white">
+                                                    ECO: {viewingPlayer.totalBallsBowled > 0
+                                                        ? ((viewingPlayer.totalRunsConceded / (viewingPlayer.totalBallsBowled / 6))).toFixed(2)
+                                                        : '0.00'}
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <div className="text-[10px] text-gray-500 uppercase font-bold">Overs</div>
+                                                    <div className="text-sm text-white font-heading">{(viewingPlayer.totalBallsBowled / 6).toFixed(1) || '0.0'}</div>
+                                                </div>
+                                                <div>
+                                                    <div className="text-[10px] text-gray-500 uppercase font-bold">Runs Conc.</div>
+                                                    <div className="text-sm text-white font-heading">{viewingPlayer.totalRunsConceded || 0}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="p-6 bg-white/[0.02] border-t border-white/10 flex justify-end gap-3">
+                                <Button variant="outline" className="text-xs uppercase font-bold tracking-widest border-white/10" onClick={() => setViewingPlayer(null)}>Close View</Button>
+                                <Button className="bg-brand-blue hover:bg-brand-blue/80 text-xs uppercase font-bold tracking-widest" onClick={() => {
+                                    setEditingPlayer(viewingPlayer);
+                                    setViewingPlayer(null);
+                                }}>
+                                    <Edit className="w-3 h-3 mr-2" /> Edit Details
+                                </Button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Match Scoring Modal */}
             <AnimatePresence>
                 {scoringMatch && (
@@ -1356,7 +1610,6 @@ export default function AdminDashboard() {
                                                     <th className="px-2 py-3">Runs</th>
                                                     <th className="px-2 py-3">Balls</th>
                                                     <th className="px-2 py-3">4s</th>
-                                                    <th className="px-2 py-3">6s</th>
                                                     <th className="px-2 py-3 bg-brand-red/10">Wkts</th>
                                                     <th className="px-2 py-3">Conc.</th>
                                                     <th className="px-2 py-3">Bowled</th>
@@ -1378,7 +1631,7 @@ export default function AdminDashboard() {
                                                         <td className="px-2 py-3"><Input type="number" value={player.runsScored} onChange={(e) => handlePlayerStatChange(player.playerId, 'runsScored', parseInt(e.target.value) || 0)} className="w-12 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
                                                         <td className="px-2 py-3"><Input type="number" value={player.ballsFaced} onChange={(e) => handlePlayerStatChange(player.playerId, 'ballsFaced', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
                                                         <td className="px-2 py-3"><Input type="number" value={player.fours} onChange={(e) => handlePlayerStatChange(player.playerId, 'fours', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
-                                                        <td className="px-2 py-3"><Input type="number" value={player.sixes} onChange={(e) => handlePlayerStatChange(player.playerId, 'sixes', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
+
                                                         <td className="px-2 py-3 bg-brand-red/5"><Input type="number" value={player.wickets} onChange={(e) => handlePlayerStatChange(player.playerId, 'wickets', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-red-900/20 border-white/5 p-1 text-brand-red font-bold" /></td>
                                                         <td className="px-2 py-3"><Input type="number" value={player.runsConceded} onChange={(e) => handlePlayerStatChange(player.playerId, 'runsConceded', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
                                                         <td className="px-2 py-3"><Input type="number" value={player.ballsBowled} onChange={(e) => handlePlayerStatChange(player.playerId, 'ballsBowled', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>

@@ -34,6 +34,7 @@ export const createTeamSchema = z.object({
     shortName: z.string().max(10).optional(),
     color: z.string().optional(),
     logo: z.string().optional(),
+    coverPhoto: z.string().optional(),
 });
 
 export const assignPlayersSchema = z.object({

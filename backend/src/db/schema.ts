@@ -48,6 +48,7 @@ export const teams = pgTable('teams', {
     id: uuid('id').defaultRandom().primaryKey(),
     name: varchar('name', { length: 255 }).notNull().unique(),
     logo: text('logo'),
+    coverPhoto: text('cover_photo'),
     shortName: varchar('short_name', { length: 10 }),
     color: varchar('color', { length: 7 }).default('#38bdf8'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -68,6 +69,7 @@ export const matches = pgTable('matches', {
     winnerTeamId: uuid('winner_team_id').references(() => teams.id),
     manOfTheMatch: uuid('man_of_the_match').references(() => players.id),
     matchType: varchar('match_type', { length: 20 }).default('league'), // league, final
+    scoreboardImage: text('scoreboard_image'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

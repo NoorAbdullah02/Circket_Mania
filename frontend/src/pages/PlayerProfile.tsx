@@ -35,7 +35,6 @@ export default function PlayerProfile() {
         { label: 'Runs', value: player.totalRuns || 0, color: 'text-brand-yellow' },
         { label: 'Wickets', value: player.totalWickets || 0, color: 'text-emerald-400' },
         { label: 'Fours', value: player.totalFours || 0, color: 'text-white' },
-        { label: 'Sixes', value: player.totalSixes || 0, color: 'text-brand-red' },
         { label: 'Catches', value: player.totalCatches || 0, color: 'text-purple-400' },
     ];
 
@@ -131,7 +130,6 @@ export default function PlayerProfile() {
                             { label: 'Batting Average', value: battingAvg },
                             { label: 'Strike Rate', value: strikeRate },
                             { label: 'Fours', value: player.totalFours || 0 },
-                            { label: 'Sixes', value: player.totalSixes || 0 },
                         ].map(stat => (
                             <div key={stat.label} className="flex justify-between items-center py-2 border-b border-white/5">
                                 <span className="text-gray-400 text-sm">{stat.label}</span>

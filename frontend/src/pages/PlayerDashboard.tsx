@@ -191,8 +191,8 @@ export default function PlayerDashboard() {
                                     <div className="text-[10px] text-gray-500 uppercase tracking-widest">Matches</div>
                                 </div>
                                 <div className="p-4 text-center">
-                                    <div className="text-2xl font-bold text-brand-yellow">{player.totalSixes}</div>
-                                    <div className="text-[10px] text-gray-500 uppercase tracking-widest">Sixes</div>
+                                    <div className="text-2xl font-bold text-brand-yellow">{player.totalFours}</div>
+                                    <div className="text-[10px] text-gray-500 uppercase tracking-widest">Fours</div>
                                 </div>
                             </div>
                         </CardContent>
@@ -333,9 +333,11 @@ function CaptainTeamEditor({ team }: { team: any }) {
     const [teamData, setTeamData] = useState({
         name: team.name || '',
         logo: team.logo || '',
+        coverPhoto: team.coverPhoto || '',
         color: team.color || '#38BDF8',
     });
     const [uploadingLogo, setUploadingLogo] = useState(false);
+    const [uploadingCover, setUploadingCover] = useState(false);
 
     const updateTeamMutation = useMutation({
         mutationFn: async (data: any) => api.put(`/teams/${team.id}`, data),
@@ -365,6 +367,24 @@ function CaptainTeamEditor({ team }: { team: any }) {
         }
     };
 
+    const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            setUploadingCover(true);
+            const formData = new FormData();
+            formData.append('file', file);
+            const { data } = await api.post('/upload?folder=teams', formData);
+            setTeamData(prev => ({ ...prev, coverPhoto: data.url }));
+            toast.success('Cover photo uploaded!');
+        } catch (error) {
+            toast.error('Cover upload failed');
+        } finally {
+            setUploadingCover(false);
+        }
+    };
+
     return (
         <Card className="glass-card mt-6">
             <CardHeader className="flex flex-row items-center justify-between border-b border-white/10 pb-4">
@@ -378,33 +398,55 @@ function CaptainTeamEditor({ team }: { team: any }) {
             </CardHeader>
             <CardContent className="pt-6">
                 {!editing ? (
-                    <div className="text-center">
-                        <img
-                            src={team.logo || `https://ui-avatars.com/api/?name=${team.name}&background=random`}
-                            alt={team.name}
-                            className="w-16 h-16 mx-auto rounded-full object-cover border-2 border-white/20"
-                        />
-                        <h3 className="text-lg font-heading text-white tracking-widest mt-3">{team.name}</h3>
-                        <div className="flex items-center justify-center gap-2 mt-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: team.color }} />
-                            <span className="text-xs text-gray-500">{team.color}</span>
+                    <div className="text-center relative rounded-xl overflow-hidden pt-12 pb-6 border border-white/10" style={{
+                        backgroundImage: team.coverPhoto ? `url(${team.coverPhoto})` : `linear-gradient(to bottom right, ${team.color}40, transparent)`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                    }}>
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-0"></div>
+                        <div className="relative z-10">
+                            <img
+                                src={team.logo || `https://ui-avatars.com/api/?name=${team.name}&background=random`}
+                                alt={team.name}
+                                className="w-20 h-20 mx-auto rounded-full object-cover border-4 border-black shadow-xl"
+                            />
+                            <h3 className="text-xl font-heading text-white tracking-widest mt-4 drop-shadow-lg">{team.name}</h3>
+                            <div className="flex items-center justify-center gap-2 mt-2 bg-black/40 inline-flex px-3 py-1 rounded-full border border-white/10 mx-auto">
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: team.color }} />
+                            </div>
                         </div>
                     </div>
                 ) : (
                     <form onSubmit={(e) => { e.preventDefault(); updateTeamMutation.mutate(teamData); }} className="space-y-4">
-                        <div className="flex flex-col items-center">
-                            <div className="relative w-20 h-20 group">
-                                <div className="relative w-full h-full rounded-full bg-black border border-white/20 flex items-center justify-center overflow-hidden">
+                        <div className="flex flex-col sm:flex-row gap-6 items-start justify-center">
+                            <div className="relative w-24 h-24 group shrink-0">
+                                <div className="relative w-full h-full rounded-full bg-black border-[3px] border-white/20 flex items-center justify-center overflow-hidden">
                                     {teamData.logo ? (
                                         <img src={teamData.logo} alt="Logo" className="w-full h-full object-cover" />
                                     ) : (
                                         <Shield className="w-8 h-8 text-gray-500" />
                                     )}
-                                    <label className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity rounded-full">
-                                        {uploadingLogo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
+                                    <label className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity rounded-full">
+                                        {uploadingLogo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-5 h-5 text-white mb-1" />}
+                                        <span className="text-[8px] uppercase font-bold tracking-widest">Logo</span>
                                         <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} />
                                     </label>
                                 </div>
+                            </div>
+
+                            <div className="relative h-24 w-full max-w-xs group rounded-xl overflow-hidden border border-white/20 bg-black/40">
+                                {teamData.coverPhoto ? (
+                                    <img src={teamData.coverPhoto} alt="Cover" className="w-full h-full object-cover opacity-80" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-white/5">
+                                        <span className="text-xs text-gray-500 uppercase tracking-widest">No Cover Photo</span>
+                                    </div>
+                                )}
+                                <label className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                                    {uploadingCover ? <Loader2 className="w-6 h-6 animate-spin text-brand-yellow" /> : <Camera className="w-6 h-6 text-white mb-2" />}
+                                    <span className="text-[10px] uppercase font-bold tracking-widest text-brand-yellow">Upload Cover Photo</span>
+                                    <input type="file" className="hidden" accept="image/*" onChange={handleCoverUpload} />
+                                </label>
                             </div>
                         </div>
                         <div className="space-y-2">
@@ -415,7 +457,6 @@ function CaptainTeamEditor({ team }: { team: any }) {
                             <Label className="text-gray-400 uppercase text-xs tracking-widest">Color</Label>
                             <div className="flex gap-2">
                                 <Input type="color" className="w-10 h-10 p-1" value={teamData.color} onChange={(e) => setTeamData({ ...teamData, color: e.target.value })} />
-                                <Input value={teamData.color} onChange={(e) => setTeamData({ ...teamData, color: e.target.value })} className="text-xs" />
                             </div>
                         </div>
                         <Button type="submit" className="w-full bg-brand-yellow text-black hover:bg-yellow-500" disabled={updateTeamMutation.isPending}>
