@@ -106,10 +106,16 @@ export async function getTeamById(req: Request, res: Response): Promise<void> {
                 totalFours: players.totalFours,
             })
             .from(players)
-            .innerJoin(users, eq(players.userId, users.id))
+            .leftJoin(users, eq(players.userId, users.id))
             .where(eq(players.teamId, id));
 
-        res.json({ ...team, players: teamPlayers });
+        // Ensure players always has a name
+        const sanitizedPlayers = teamPlayers.map(p => ({
+            ...p,
+            name: p.name || 'Unnamed Player'
+        }));
+
+        res.json({ ...team, players: sanitizedPlayers });
     } catch (error) {
         res.status(500).json({ error: 'Failed to get team' });
     }
@@ -217,13 +223,13 @@ export async function assignPlayersToTeam(req: Request, res: Response): Promise<
 
 export async function removePlayerFromTeam(req: Request, res: Response): Promise<void> {
     try {
-        const playerId = req.params.playerId as string;
-
-        await db.update(players)
-            .set({ teamId: null, isCaptain: false, status: 'pending' })
-            .where(eq(players.id, playerId));
-
-        res.json({ message: 'Player removed from team' });
+        const { playerId } = req.body;
+        if (!playerId) {
+            res.status(400).json({ error: 'Player ID required' });
+            return;
+        }
+        await db.update(players).set({ teamId: null, status: 'pending' }).where(eq(players.id, playerId));
+        res.json({ message: 'Player removed from team and returned to draft pool' });
     } catch (error) {
         res.status(500).json({ error: 'Failed to remove player' });
     }

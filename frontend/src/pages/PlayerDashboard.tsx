@@ -131,8 +131,8 @@ export default function PlayerDashboard() {
                                 required
                             />
                         </div>
-                        <Button className="w-full h-14 bg-brand-yellow text-black hover:bg-yellow-500 font-bold uppercase tracking-[0.2em] transform active:scale-95 transition-all rounded-xl" disabled={verifyTokenMutation.isPending}>
-                            {verifyTokenMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'UNLOCK PROFILE'}
+                        <Button className="w-full h-14 bg-brand-yellow text-black hover:bg-yellow-500 font-bold uppercase tracking-[0.2em] transform active:scale-95 transition-all rounded-xl" isLoading={verifyTokenMutation.isPending}>
+                            UNLOCK PROFILE
                         </Button>
                         <p className="text-[11px] text-gray-500 text-center uppercase tracking-widest leading-relaxed">
                             Token was sent when you were assigned to <br /> <span className="text-brand-blue font-bold">{teamInfo?.name || 'your team'}</span>
@@ -278,8 +278,8 @@ export default function PlayerDashboard() {
                                     />
                                 </div>
 
-                                <Button type="submit" className="w-full text-xs font-bold h-14 mt-4 bg-gradient-to-r from-brand-blue to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white uppercase tracking-[0.2em] transform active:scale-[0.98] transition-all rounded-xl shadow-[0_0_20px_rgba(56,189,248,0.2)]" disabled={updateProfileMutation.isPending}>
-                                    {updateProfileMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'SECURE PROFILE UPDATES'}
+                                <Button type="submit" className="w-full text-xs font-bold h-14 mt-4 bg-gradient-to-r from-brand-blue to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white uppercase tracking-[0.2em] transform active:scale-[0.98] transition-all rounded-xl shadow-[0_0_20px_rgba(56,189,248,0.2)]" isLoading={updateProfileMutation.isPending}>
+                                    SECURE PROFILE UPDATES
                                 </Button>
                             </form>
                         </CardContent>
@@ -493,8 +493,8 @@ function CaptainTeamEditor({ team }: { team: any }) {
                                 </div>
                             </div>
 
-                            <Button type="submit" className="w-full h-14 bg-brand-yellow text-black hover:bg-yellow-500 font-bold uppercase tracking-[0.2em] transform active:scale-[0.98] transition-all rounded-xl shadow-[0_0_20px_rgba(255,214,10,0.2)]" disabled={updateTeamMutation.isPending}>
-                                {updateTeamMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'COMMIT FRANCHISE CHANGES'}
+                            <Button type="submit" className="w-full h-14 bg-brand-yellow text-black hover:bg-yellow-500 font-bold uppercase tracking-[0.2em] transform active:scale-[0.98] transition-all rounded-xl shadow-[0_0_20px_rgba(255,214,10,0.2)]" isLoading={updateTeamMutation.isPending}>
+                                COMMIT FRANCHISE CHANGES
                             </Button>
                         </motion.form>
                     )}

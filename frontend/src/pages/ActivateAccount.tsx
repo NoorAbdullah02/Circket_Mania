@@ -99,8 +99,8 @@ export default function ActivateAccount() {
                                 </div>
                             </div>
 
-                            <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500" disabled={loading}>
-                                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Activate My Account'}
+                            <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500" isLoading={loading}>
+                                Activate My Account
                             </Button>
                         </form>
                     </CardContent>

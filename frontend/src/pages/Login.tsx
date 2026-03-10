@@ -134,10 +134,10 @@ export default function Login() {
                                 </div>
                             </div>
 
-                            <Button type="submit" className="login-element w-full h-12 mt-4 bg-gradient-to-r from-brand-blue to-accent hover:from-brand-blue hover:to-blue-500 text-white font-bold tracking-[0.2em] relative overflow-hidden group shadow-[0_0_20px_rgba(56,189,248,0.2)] hover:shadow-[0_0_25px_rgba(56,189,248,0.4)] transition-all rounded-xl transform active:scale-95" disabled={loading}>
+                            <Button type="submit" className="login-element w-full h-12 mt-4 bg-gradient-to-r from-brand-blue to-accent hover:from-brand-blue hover:to-blue-500 text-white font-bold tracking-[0.2em] relative overflow-hidden group shadow-[0_0_20px_rgba(56,189,248,0.2)] hover:shadow-[0_0_25px_rgba(56,189,248,0.4)] transition-all rounded-xl transform active:scale-95" isLoading={loading}>
                                 <div className="absolute inset-0 w-full h-full bg-white/20 scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-500 ease-out"></div>
                                 <span className="relative flex items-center justify-center">
-                                    {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'SECURE LOGIN'}
+                                    SECURE LOGIN
                                 </span>
                             </Button>
                         </form>

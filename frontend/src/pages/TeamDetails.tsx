@@ -33,12 +33,10 @@ export default function TeamDetails() {
 
     useGSAP(() => {
         if (team) {
-            const tl = gsap.timeline({ defaults: { ease: 'power3.out', duration: 1 } });
-            tl.from('.team-header', { y: 30, opacity: 0, scale: 0.98 })
-                .from('.team-stat', { scale: 0.5, opacity: 0, stagger: 0.1 }, '-=0.5')
-                .from('.squad-card', { x: -30, opacity: 0 }, '-=0.5')
-                .from('.match-sidebar', { x: 30, opacity: 0 }, '-=1')
-                .from('.player-row', { opacity: 0, x: -10, stagger: 0.05, duration: 0.5 }, '-=0.5');
+            // Only animate transforms — NEVER set opacity to 0 as it hides elements permanently
+            gsap.from('.team-header', { y: 20, duration: 0.8, ease: 'power3.out' });
+            gsap.from('.team-stat', { scale: 0.8, duration: 0.6, stagger: 0.05, ease: 'back.out(1.5)', delay: 0.2 });
+            gsap.from('.match-sidebar', { x: 20, duration: 0.8, ease: 'power3.out', delay: 0.3 });
         }
     }, { dependencies: [team], scope: container });
 
@@ -63,8 +61,8 @@ export default function TeamDetails() {
         );
     }
 
-    const completedMatches = matches?.filter((m: any) => m.status === 'completed') || [];
-    const upcomingMatches = matches?.filter((m: any) => m.status === 'upcoming' || m.status === 'live') || [];
+    const completedMatches = matches?.filter((m: any) => ['completed', 'no_result', 'cancelled'].includes(m.status)) || [];
+    const upcomingMatches = matches?.filter((m: any) => ['upcoming', 'live', 'postponed'].includes(m.status)) || [];
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative" ref={container}>
@@ -128,61 +126,72 @@ export default function TeamDetails() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                 {/* Squad Section */}
-                <div className="lg:col-span-2 squad-card">
-                    <Card className="glass-card border-white/5 overflow-hidden">
-                        <CardHeader className="border-b border-white/5 px-8 py-6 bg-white/[0.02]">
-                            <CardTitle className="font-heading tracking-[0.2em] flex items-center gap-4 text-sm uppercase text-brand-blue">
-                                <div className="w-10 h-10 rounded-xl bg-brand-blue/10 flex items-center justify-center">
-                                    <Users className="w-5 h-5" />
-                                </div>
+                <div className="lg:col-span-2">
+                    <div style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '24px', overflow: 'hidden' }}>
+                        <div style={{ padding: '20px 28px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: '14px', background: 'rgba(255,255,255,0.02)' }}>
+                            <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(56,189,248,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Users className="w-5 h-5 text-cyan-400" />
+                            </div>
+                            <span style={{ color: '#38BDF8', fontWeight: 800, fontSize: '12px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'Oswald, sans-serif' }}>
                                 Franchise Squad
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            {team.players?.length === 0 ? (
-                                <div className="text-center py-20 bg-black/20">
-                                    <Users className="w-12 h-12 text-gray-700 mx-auto mb-4 opacity-20" />
-                                    <p className="text-gray-500 uppercase text-[10px] tracking-widest font-bold">Roster synchronization pending</p>
+                            </span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+                            {(!team.players || team.players.length === 0) ? (
+                                <div style={{ textAlign: 'center', padding: '60px 20px', color: '#555', gridColumn: '1 / -1' }}>
+                                    <Users className="w-12 h-12 mx-auto mb-4 opacity-20" style={{ color: '#555' }} />
+                                    <p style={{ fontSize: '10px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 700 }}>Roster synchronization pending</p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-0">
-                                    {team.players?.map((player: any, i: number) => (
-                                        <Link
-                                            to={`/player/${player.id}`}
-                                            key={player.id}
-                                            className="player-row flex items-center gap-5 p-6 border-b border-r border-white/5 hover:bg-white/[0.03] transition-all group"
-                                        >
-                                            <div className="relative">
-                                                <div className="absolute -inset-1 bg-brand-blue/20 rounded-full blur opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                <img
-                                                    src={player.profileImage || `https://ui-avatars.com/api/?name=${player.name}&background=random`}
-                                                    alt={player.name}
-                                                    className="w-16 h-16 rounded-full object-cover border-2 border-white/10 group-hover:border-brand-blue/40 transition-all duration-500 relative z-10"
-                                                />
-                                                {player.isCaptain && (
-                                                    <div className="absolute -top-1 -right-1 w-7 h-7 bg-brand-yellow text-black rounded-lg flex items-center justify-center text-[10px] font-black z-20 shadow-lg rotate-12 border-2 border-brand-bg uppercase">C</div>
+                                team.players.map((player: any, i: number) => (
+                                    <Link
+                                        to={`/player/${player.id}`}
+                                        key={player.id}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '16px',
+                                            padding: '16px 24px',
+                                            borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                            borderRight: '1px solid rgba(255,255,255,0.04)',
+                                            color: 'white',
+                                            textDecoration: 'none',
+                                            transition: 'background 0.3s',
+                                        }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+                                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                                    >
+                                        <div style={{ position: 'relative' }}>
+                                            <img
+                                                src={player.profileImage || `https://ui-avatars.com/api/?name=${player.name}&background=random`}
+                                                alt={player.name}
+                                                style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.1)' }}
+                                            />
+                                            {player.isCaptain && (
+                                                <div style={{ position: 'absolute', top: '-4px', right: '-4px', width: '22px', height: '22px', background: '#FFD60A', color: 'black', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 900, transform: 'rotate(12deg)', border: '2px solid #000', zIndex: 10 }}>C</div>
+                                            )}
+                                        </div>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontWeight: 700, fontSize: '15px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {player.name}
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3px' }}>
+                                                <span style={{ fontSize: '10px', color: '#38BDF8', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px' }}>{player.role || 'PLAYER'}</span>
+                                                {player.jerseyNumber && (
+                                                    <span style={{ fontSize: '10px', color: '#666', fontWeight: 700 }}>#{player.jerseyNumber}</span>
                                                 )}
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="text-white font-bold text-lg tracking-tight group-hover:text-brand-blue transition-colors truncate">{player.name}</div>
-                                                <div className="flex items-center gap-3 mt-1">
-                                                    <span className="text-[10px] text-brand-blue font-black uppercase tracking-widest">{player.role || 'PLAYER'}</span>
-                                                    {player.jerseyNumber && (
-                                                        <span className="text-[10px] text-gray-500 font-bold">#{player.jerseyNumber}</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="text-right hidden sm:block opacity-60 group-hover:opacity-100 transition-opacity">
-                                                <div className="text-xs text-white font-heading tracking-wider">{player.totalRuns || 0} <span className="text-[9px] text-gray-500 uppercase">RUNS</span></div>
-                                                <div className="text-xs text-white font-heading tracking-wider">{player.totalWickets || 0} <span className="text-[9px] text-gray-500 uppercase">WKTS</span></div>
-                                            </div>
-                                            <ArrowRight className="w-4 h-4 text-gray-700 group-hover:text-brand-blue group-hover:translate-x-1 transition-all" />
-                                        </Link>
-                                    ))}
-                                </div>
+                                        </div>
+                                        <div style={{ textAlign: 'right', fontSize: '11px', color: '#666' }}>
+                                            <div><span style={{ color: '#fff', fontWeight: 600 }}>{player.totalRuns || 0}</span> runs</div>
+                                            <div><span style={{ color: '#fff', fontWeight: 600 }}>{player.totalWickets || 0}</span> wkts</div>
+                                        </div>
+                                        <ArrowRight style={{ width: '14px', height: '14px', color: '#444' }} />
+                                    </Link>
+                                ))
                             )}
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Match Sidebars */}

@@ -145,8 +145,8 @@ export default function ResetPassword() {
                                 </div>
                             </div>
 
-                            <Button type="submit" className="w-full" disabled={loading}>
-                                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'UPDATE PASSWORD'}
+                            <Button type="submit" className="w-full" isLoading={loading}>
+                                UPDATE PASSWORD
                             </Button>
                         </form>
                     </CardContent>

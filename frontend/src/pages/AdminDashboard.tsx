@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Shield, Calendar, Loader2, Database, Plus, Search, Edit, Trash2, Camera, Activity, Crown, Check, X, Star, History, User, Award, Zap, Target, Mail, Hash, Flag, Phone, RotateCcw, Trophy, UserMinus } from 'lucide-react';
+import { Users, Shield, Calendar, Loader2, Database, Plus, Search, Edit, Trash2, Camera, Activity, Crown, Check, X, Star, History, User, Award, Zap, Target, Mail, Hash, Flag, Phone, RotateCcw, Trophy, UserMinus, Bell } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import api from '../api/client';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
@@ -53,6 +53,8 @@ export default function AdminDashboard() {
             return data;
         },
     });
+
+    const queryClient = useQueryClient();
 
     const filteredPlayers = players?.filter((player: any) => {
         const query = searchQuery.toLowerCase();
@@ -378,11 +380,12 @@ export default function AdminDashboard() {
                 [...(teamA.players || []), ...(teamB.players || [])].forEach((p: any) => {
                     initialStats.push({
                         playerId: p.id,
-                        playerName: p.name || p.user?.name,
+                        playerName: p.name || p.user?.name || 'Unnamed Player',
                         teamId: p.teamId,
                         runsScored: 0,
                         ballsFaced: 0,
                         fours: 0,
+                        sixes: 0,
                         wickets: 0,
                         runsConceded: 0,
                         ballsBowled: 0,
@@ -584,9 +587,9 @@ export default function AdminDashboard() {
                                                 <p className="text-center text-gray-400 text-sm max-w-sm">
                                                     Generate a full round-robin tournament schedule based on current tournament settings.
                                                 </p>
-                                                <Button onClick={handleGenerateMatches} disabled={generateMatchesMutation.isPending} className="bg-brand-red hover:bg-red-700 mx-auto w-full max-w-xs h-12">
-                                                    {generateMatchesMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Calendar className="w-4 h-4 mr-2" />}
-                                                    GENERATE SCHEDULE
+                                                <Button onClick={handleGenerateMatches} isLoading={generateMatchesMutation.isPending} className="bg-brand-red hover:bg-red-700 mx-auto w-full max-w-xs h-12">
+                                                    {!generateMatchesMutation.isPending && <Calendar className="w-4 h-4 mr-2" />}
+                                                    AUTOGENERATE LEAGUE FIXTURE
                                                 </Button>
                                             </CardContent>
                                         </Card>
@@ -684,8 +687,8 @@ export default function AdminDashboard() {
                                                             />
                                                         </div>
                                                     </div>
-                                                    <Button type="submit" className="bg-brand-blue hover:bg-blue-600 h-10 uppercase tracking-widest text-xs" disabled={createTeamMutation.isPending}>
-                                                        {createTeamMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm'}
+                                                    <Button type="submit" className="bg-brand-blue hover:bg-blue-600 h-10 uppercase tracking-widest text-xs" isLoading={createTeamMutation.isPending}>
+                                                        Confirm
                                                     </Button>
                                                 </form>
                                             </CardContent>
@@ -766,8 +769,8 @@ export default function AdminDashboard() {
                                                         </div>
                                                     </div>
                                                     <div className="flex gap-2">
-                                                        <Button type="submit" className="bg-brand-yellow text-black hover:bg-yellow-500 h-10 flex-1" disabled={updateTeamMutation.isPending}>
-                                                            {updateTeamMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                                                        <Button type="submit" className="bg-brand-yellow text-black hover:bg-yellow-500 h-10 flex-1" isLoading={updateTeamMutation.isPending}>
+                                                            {!updateTeamMutation.isPending && <Check className="w-4 h-4" />}
                                                         </Button>
                                                         <Button type="button" variant="ghost" className="h-10 border border-white/10" onClick={() => setEditingTeam(null)}>
                                                             <X className="w-4 h-4" />
@@ -917,7 +920,7 @@ export default function AdminDashboard() {
                                                                     <Button
                                                                         className="mt-4 w-full h-9 text-[10px] font-black uppercase tracking-widest bg-white/5 hover:bg-brand-blue hover:text-white border-white/10 transition-all"
                                                                         variant="outline"
-                                                                        disabled={assignPlayerMutation.isPending}
+                                                                        isLoading={assignPlayerMutation.isPending}
                                                                     >
                                                                         Assign Asset
                                                                     </Button>
@@ -1033,7 +1036,7 @@ export default function AdminDashboard() {
                                                                     size="sm"
                                                                     className="h-9 px-5 text-brand-red/70 hover:text-white hover:bg-brand-red uppercase text-[10px] font-black tracking-widest rounded-xl transition-all border border-brand-red/20 hover:border-brand-red"
                                                                     onClick={() => setUnassignConfirmation(player)}
-                                                                    disabled={unassignPlayerMutation.isPending}
+                                                                    isLoading={unassignPlayerMutation.isPending}
                                                                 >
                                                                     <RotateCcw className="w-3 h-3 mr-2" /> Unassign
                                                                 </Button>
@@ -1086,7 +1089,7 @@ export default function AdminDashboard() {
                                     <Button
                                         className="bg-brand-red text-white hover:bg-red-700 gap-2"
                                         onClick={handleGenerateMatches}
-                                        disabled={generateMatchesMutation.isPending}
+                                        isLoading={generateMatchesMutation.isPending}
                                     >
                                         <Calendar className="w-4 h-4" /> Auto-Generate
                                     </Button>
@@ -1205,8 +1208,8 @@ export default function AdminDashboard() {
                                                             />
                                                         </div>
                                                         <div className="flex items-end">
-                                                            <Button type="submit" className="h-12 px-12 bg-brand-yellow text-black hover:bg-yellow-400 font-black uppercase tracking-widest rounded-xl transition-all hover:scale-[1.02] shadow-xl shadow-brand-yellow/10" disabled={createMatchMutation.isPending}>
-                                                                {createMatchMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'DEPLOY FIXTURE'}
+                                                            <Button type="submit" className="h-12 px-12 bg-brand-yellow text-black hover:bg-yellow-400 font-black uppercase tracking-widest rounded-xl transition-all hover:scale-[1.02] shadow-xl shadow-brand-yellow/10" isLoading={createMatchMutation.isPending}>
+                                                                DEPLOY FIXTURE
                                                             </Button>
                                                         </div>
                                                     </div>
@@ -1278,7 +1281,7 @@ export default function AdminDashboard() {
                                                             size="icon"
                                                             className="w-10 h-10 text-gray-400 hover:text-brand-yellow hover:bg-brand-yellow/10 rounded-xl"
                                                             onClick={() => sendReminderMutation.mutate(match.id)}
-                                                            disabled={sendReminderMutation.isPending}
+                                                            isLoading={sendReminderMutation.isPending}
                                                             title="Send Match Reminders"
                                                         >
                                                             {sendReminderMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
@@ -1366,7 +1369,7 @@ export default function AdminDashboard() {
                                                     size="sm"
                                                     className="text-brand-blue hover:text-white"
                                                     onClick={() => sendResultsMutation.mutate(match.id)}
-                                                    disabled={sendResultsMutation.isPending}
+                                                    isLoading={sendResultsMutation.isPending}
                                                     title="Send Results Email"
                                                 >
                                                     {sendResultsMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
@@ -1484,8 +1487,8 @@ export default function AdminDashboard() {
 
                                 <div className="flex gap-4 pt-4 border-t border-white/10">
                                     <Button type="button" variant="outline" className="flex-1" onClick={() => setEditingPlayer(null)}>Cancel</Button>
-                                    <Button type="submit" className="flex-1" disabled={updatePlayerMutation.isPending}>
-                                        {updatePlayerMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Details'}
+                                    <Button type="submit" className="flex-1" isLoading={updatePlayerMutation.isPending}>
+                                        Save Details
                                     </Button>
                                 </div>
                             </form>
@@ -1729,9 +1732,9 @@ export default function AdminDashboard() {
                                         unassignPlayerMutation.mutate(unassignConfirmation.id);
                                         setUnassignConfirmation(null);
                                     }}
-                                    disabled={unassignPlayerMutation.isPending}
+                                    isLoading={unassignPlayerMutation.isPending}
                                 >
-                                    {unassignPlayerMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'CONFIRM UNASSIGN'}
+                                    CONFIRM UNASSIGN
                                 </Button>
                                 <Button
                                     variant="ghost"
@@ -1839,9 +1842,8 @@ export default function AdminDashboard() {
                                                             <option value={2}>2nd Innings</option>
                                                         </select>
                                                     </div>
-                                                    <Button className="w-full bg-brand-blue hover:bg-blue-600 h-10 gap-2" onClick={() => saveScoring().catch(console.error)} disabled={updateMatchScoreMutation.isPending || updateMatchStatsMutation.isPending}>
-                                                        {(updateMatchScoreMutation.isPending || updateMatchStatsMutation.isPending) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
-                                                        SAVE LIVE SCOREBOARD
+                                                    <Button className="w-full bg-brand-blue hover:bg-blue-600 h-10 gap-2" onClick={() => saveScoring().catch(console.error)} isLoading={updateMatchScoreMutation.isPending || updateMatchStatsMutation.isPending}>
+                                                        {(updateMatchScoreMutation.isPending || updateMatchStatsMutation.isPending) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}  SAVE LIVE SCOREBOARD
                                                     </Button>
                                                 </div>
                                             </CardContent>
@@ -1864,8 +1866,8 @@ export default function AdminDashboard() {
                                                         className="w-full bg-black/50 border border-white/10 rounded-lg h-10 px-3 text-sm text-white focus:border-brand-yellow transition-all appearance-none"
                                                     >
                                                         <option value="">Not Conducted</option>
-                                                        <option value={scoringMatch.teamAId}>{scoringMatch.teamA?.name}</option>
-                                                        <option value={scoringMatch.teamBId}>{scoringMatch.teamB?.name}</option>
+                                                        {scoringMatch.teamA && <option value={scoringMatch.teamAId}>{scoringMatch.teamA.name}</option>}
+                                                        {scoringMatch.teamB && <option value={scoringMatch.teamBId}>{scoringMatch.teamB.name}</option>}
                                                     </select>
                                                 </div>
                                                 <div className="space-y-2">
@@ -1882,22 +1884,27 @@ export default function AdminDashboard() {
                                                 </div>
                                                 <Button
                                                     className="w-full bg-brand-yellow/90 hover:bg-brand-yellow text-black font-bold h-10 gap-2 uppercase tracking-widest text-xs"
+                                                    isLoading={scoringMatch?.isTossUpdating}
                                                     onClick={async () => {
                                                         const tossWinner = (document.getElementById('toss-winner-select') as HTMLSelectElement).value;
                                                         const tossDecision = (document.getElementById('toss-decision-select') as HTMLSelectElement).value;
                                                         try {
+                                                            // We use setScoringMatch to show a local loading state since toss is just a PUT
+                                                            setScoringMatch({ ...scoringMatch, isTossUpdating: true });
                                                             await api.put(`/matches/${scoringMatch.id}`, {
                                                                 tossWinner: tossWinner || null,
                                                                 tossDecision: tossDecision || null,
                                                             });
-                                                            setScoringMatch({ ...scoringMatch, tossWinner, tossDecision });
+                                                            setScoringMatch({ ...scoringMatch, tossWinner, tossDecision, isTossUpdating: false });
                                                             toast.success('Toss result saved! 🪙');
                                                         } catch (err: any) {
+                                                            setScoringMatch({ ...scoringMatch, isTossUpdating: false });
                                                             toast.error(err.response?.data?.error || 'Failed to save toss');
                                                         }
                                                     }}
+                                                    isLoading={scoringMatch?.isTossUpdating}
                                                 >
-                                                    <Flag className="w-4 h-4" /> SAVE TOSS RESULT
+                                                    {scoringMatch?.isTossUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Flag className="w-4 h-4" />} SAVE TOSS RESULT
                                                 </Button>
                                             </CardContent>
                                         </Card>
@@ -1941,11 +1948,12 @@ export default function AdminDashboard() {
                                                     <Label className="text-xs text-gray-400 uppercase">Winner Team</Label>
                                                     <select
                                                         id="winner-select"
+                                                        defaultValue={scoringMatch.status === 'no_result' ? 'no_result' : (scoringMatch.winnerTeamId || '')}
                                                         className="w-full bg-black/50 border border-white/10 rounded h-10 px-3 text-sm text-white focus:border-emerald-500"
                                                     >
                                                         <option value="">Select Winner</option>
-                                                        <option value={scoringMatch.teamAId}>{scoringMatch.teamA?.name}</option>
-                                                        <option value={scoringMatch.teamBId}>{scoringMatch.teamB?.name}</option>
+                                                        {scoringMatch.teamA && <option value={scoringMatch.teamAId}>{scoringMatch.teamA.name}</option>}
+                                                        {scoringMatch.teamB && <option value={scoringMatch.teamBId}>{scoringMatch.teamB.name}</option>}
                                                         <option value="no_result">No Result / Draw</option>
                                                     </select>
                                                 </div>
@@ -1953,6 +1961,7 @@ export default function AdminDashboard() {
                                                     <Label className="text-xs text-gray-400 uppercase">Man of the Match</Label>
                                                     <select
                                                         id="motm-select"
+                                                        defaultValue={typeof scoringMatch.manOfTheMatch === 'object' ? (scoringMatch.manOfTheMatch?.id || '') : (scoringMatch.manOfTheMatch || '')}
                                                         className="w-full bg-black/50 border border-white/10 rounded h-10 px-3 text-sm text-white focus:border-brand-yellow"
                                                     >
                                                         <option value="">Select MVP</option>
@@ -1968,7 +1977,7 @@ export default function AdminDashboard() {
                                                         const motmId = (document.getElementById('motm-select') as HTMLSelectElement).value;
                                                         finalizeMatch(winnerId, motmId);
                                                     }}
-                                                    disabled={completeMatchMutation.isPending}
+                                                    isLoading={completeMatchMutation.isPending}
                                                 >
                                                     {completeMatchMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Star className="w-4 h-4" />}
                                                     FINALIZE MATCH RESULT
@@ -1995,6 +2004,7 @@ export default function AdminDashboard() {
                                                         <th className="px-2 py-3">Runs</th>
                                                         <th className="px-2 py-3">Balls</th>
                                                         <th className="px-2 py-3">4s</th>
+                                                        <th className="px-2 py-3">6s</th>
                                                         <th className="px-2 py-3 bg-brand-red/10">Wkts</th>
                                                         <th className="px-2 py-3">Conc.</th>
                                                         <th className="px-2 py-3">Bowled</th>
@@ -2016,6 +2026,7 @@ export default function AdminDashboard() {
                                                             <td className="px-2 py-3"><Input type="number" value={player.runsScored} onChange={(e) => handlePlayerStatChange(player.playerId, 'runsScored', parseInt(e.target.value) || 0)} className="w-12 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
                                                             <td className="px-2 py-3"><Input type="number" value={player.ballsFaced} onChange={(e) => handlePlayerStatChange(player.playerId, 'ballsFaced', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
                                                             <td className="px-2 py-3"><Input type="number" value={player.fours} onChange={(e) => handlePlayerStatChange(player.playerId, 'fours', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
+                                                            <td className="px-2 py-3"><Input type="number" value={player.sixes} onChange={(e) => handlePlayerStatChange(player.playerId, 'sixes', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
 
                                                             <td className="px-2 py-3 bg-brand-red/5"><Input type="number" value={player.wickets} onChange={(e) => handlePlayerStatChange(player.playerId, 'wickets', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-red-900/20 border-white/5 p-1 text-brand-red font-bold" /></td>
                                                             <td className="px-2 py-3"><Input type="number" value={player.runsConceded} onChange={(e) => handlePlayerStatChange(player.playerId, 'runsConceded', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
@@ -2031,7 +2042,7 @@ export default function AdminDashboard() {
                                                 variant="outline"
                                                 className="border-brand-yellow text-brand-yellow hover:bg-brand-yellow/10 font-bold h-11 px-6 gap-2"
                                                 onClick={() => sendReminderMutation.mutate(scoringMatch.id)}
-                                                disabled={sendReminderMutation.isPending}
+                                                isLoading={sendReminderMutation.isPending}
                                             >
                                                 {sendReminderMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
                                                 SEND REMINDER
@@ -2039,7 +2050,7 @@ export default function AdminDashboard() {
                                             <Button
                                                 className="bg-brand-yellow text-black hover:bg-yellow-500 font-bold h-11 px-8 gap-2"
                                                 onClick={() => updateMatchStatsMutation.mutate({ matchId: scoringMatch.id, stats: matchPlayerStatsData })}
-                                                disabled={updateMatchStatsMutation.isPending}
+                                                isLoading={updateMatchStatsMutation.isPending}
                                             >
                                                 <Database className="w-4 h-4" />
                                                 UPDATE PLAYER STATS
@@ -2130,8 +2141,8 @@ export default function AdminDashboard() {
 
                                 <div className="flex gap-4 pt-4 border-t border-white/10">
                                     <Button type="button" variant="outline" className="flex-1 border-white/10" onClick={() => setEditingMatch(null)}>Cancel</Button>
-                                    <Button type="submit" className="flex-1 bg-brand-yellow text-black hover:bg-yellow-500 font-bold" disabled={updateMatchMutation.isPending}>
-                                        {updateMatchMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'SAVE CHANGES'}
+                                    <Button type="submit" className="flex-1 bg-brand-yellow text-black hover:bg-yellow-500 font-bold" isLoading={updateMatchMutation.isPending}>
+                                        SAVE CHANGES
                                     </Button>
                                 </div>
                             </form>

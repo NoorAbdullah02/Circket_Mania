@@ -112,13 +112,15 @@ export default function PointsTable() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    {row.team?.logo ? (
-                                                        <img src={row.team.logo} alt={row.team.name} className="w-10 h-10 rounded-full bg-white/10 object-cover border border-white/20" />
-                                                    ) : (
-                                                        <div className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-lg font-bold">
-                                                            {row.team?.shortName || row.team?.name?.charAt(0)}
-                                                        </div>
-                                                    )}
+                                                    <Link to={`/team/${row.team?.id}`} className="hover:scale-110 transition-transform">
+                                                        {row.team?.logo ? (
+                                                            <img src={row.team.logo} alt={row.team.name} className="w-10 h-10 rounded-full bg-white/10 object-cover border border-white/20 shadow-lg" />
+                                                        ) : (
+                                                            <div className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-lg font-bold text-white">
+                                                                {row.team?.shortName || row.team?.name?.charAt(0)}
+                                                            </div>
+                                                        )}
+                                                    </Link>
                                                     <div>
                                                         <Link to={`/team/${row.team?.id}`} className="hover:text-brand-yellow transition-colors">
                                                             <span className={`font-heading tracking-wider text-xl ${isTop2 ? 'neon-text-blue' : 'text-white'}`}>

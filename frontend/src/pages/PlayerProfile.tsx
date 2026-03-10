@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Loader2, Shield, Trophy, Target, Crosshair, Activity, Star } from 'lucide-react';
+import { Loader2, Shield, Trophy, Target, Crosshair, Activity, Star, ArrowRight } from 'lucide-react';
 import api from '../api/client';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import gsap from 'gsap';
@@ -23,10 +23,10 @@ export default function PlayerProfile() {
 
     useGSAP(() => {
         if (player) {
-            const tl = gsap.timeline({ defaults: { ease: 'power3.out', duration: 1 } });
-            tl.from('.profile-header', { scale: 0.9, opacity: 0, duration: 1.2 })
-                .from('.stat-card', { y: 30, opacity: 0, stagger: 0.1, duration: 0.8 }, '-=0.8')
-                .from('.detail-card', { x: (i) => i % 2 === 0 ? -30 : 30, opacity: 0, duration: 1 }, '-=0.5');
+            // Only use transform animations — never opacity (causes elements to disappear)
+            gsap.from('.profile-header', { scale: 0.95, duration: 0.8, ease: 'power3.out' });
+            gsap.from('.stat-card', { y: 20, duration: 0.6, stagger: 0.08, ease: 'back.out(1.5)', delay: 0.2 });
+            gsap.from('.detail-card', { y: 20, duration: 0.8, ease: 'power3.out', delay: 0.3 });
         }
     }, { dependencies: [player], scope: container });
 
@@ -52,7 +52,8 @@ export default function PlayerProfile() {
         { label: 'Matches', value: player.matchesPlayed || 0, color: 'text-brand-blue', icon: Activity },
         { label: 'Runs', value: player.totalRuns || 0, color: 'text-brand-yellow', icon: Trophy },
         { label: 'Wickets', value: player.totalWickets || 0, color: 'text-brand-red', icon: Crosshair },
-        { label: 'Fours', value: player.totalFours || 0, color: 'text-white', icon: Star },
+        { label: '4s', value: player.totalFours || 0, color: 'text-white', icon: Star },
+        { label: '6s', value: player.totalSixes || 0, color: 'text-brand-yellow', icon: Zap },
         { label: 'Catches', value: player.totalCatches || 0, color: 'text-purple-400', icon: Target },
     ];
 
@@ -112,18 +113,20 @@ export default function PlayerProfile() {
                             )}
                         </div>
 
-                        {player.team && (
-                            <Link to={`/team/${player.team.id}`} className="inline-flex items-center gap-4 mt-8 bg-black/40 hover:bg-brand-blue/10 px-6 py-3 rounded-2xl transition-all border border-white/5 hover:border-brand-blue/30 group">
-                                <img
-                                    src={player.team.logo || `https://ui-avatars.com/api/?name=${player.team.name}&background=random`}
-                                    className="w-8 h-8 rounded-full object-cover border border-white/10 group-hover:scale-110 transition-transform"
-                                    alt={player.team.name}
-                                />
-                                <div className="text-left">
-                                    <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Member Of</div>
-                                    <div className="text-white font-heading tracking-[0.15em] text-sm uppercase group-hover:text-brand-blue transition-colors">{player.team.name}</div>
-                                </div>
-                            </Link>
+                        {player.team ? (
+                            <div className="flex items-center gap-3 bg-black/40 border border-white/5 py-1.5 px-4 rounded-full backdrop-blur-md translate-y-0 opacity-0 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+                                <span className={`w-3 h-3 rounded-full shadow-[0_0_10px_currentColor]`} style={{ color: player.team.color || '#38BDF8' }} />
+                                <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Member Of</span>
+                                <span className="text-white font-bold text-[11px] uppercase tracking-wider">{player.team.name}</span>
+                                <Link to={`/team/${player.team.id}`} className="hover:text-brand-blue transition-colors group">
+                                    <ArrowRight className="w-3 h-3 text-gray-600 group-hover:text-brand-blue transition-all" />
+                                </Link>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3 bg-black/40 border border-white/5 py-1.5 px-4 rounded-full backdrop-blur-md translate-y-0 opacity-0 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+                                <span className="w-3 h-3 rounded-full bg-gray-500" />
+                                <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Free Agent</span>
+                            </div>
                         )}
 
                         {player.bio && (
@@ -169,6 +172,7 @@ export default function PlayerProfile() {
                             { label: 'Batting Average', value: battingAvg, color: 'text-brand-blue' },
                             { label: 'Strike Efficiency', value: strikeRate, color: 'text-brand-yellow' },
                             { label: 'Boundary Fours', value: player.totalFours || 0, color: 'text-white' },
+                            { label: 'Boundary Sixes', value: player.totalSixes || 0, color: 'text-brand-yellow' },
                         ].map(stat => (
                             <div key={stat.label} className="flex justify-between items-center group">
                                 <span className="text-gray-500 text-[11px] uppercase tracking-widest font-bold group-hover:text-gray-400 transition-colors">{stat.label}</span>

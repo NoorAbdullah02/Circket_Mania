@@ -239,10 +239,10 @@ export default function Register() {
                                 </div>
                             </div>
 
-                            <Button type="submit" className="reg-element w-full text-sm font-bold h-14 mt-6 uppercase tracking-[0.2em] bg-gradient-to-r from-brand-red to-orange-500 hover:from-red-600 hover:to-orange-600 text-white relative overflow-hidden group shadow-[0_0_20px_rgba(255,59,48,0.2)] hover:shadow-[0_0_25px_rgba(255,59,48,0.4)] transition-all rounded-xl transform active:scale-95" disabled={loading}>
+                            <Button type="submit" className="reg-element w-full text-sm font-bold h-14 mt-6 uppercase tracking-[0.2em] bg-gradient-to-r from-brand-red to-orange-500 hover:from-red-600 hover:to-orange-600 text-white relative overflow-hidden group shadow-[0_0_20px_rgba(255,59,48,0.2)] hover:shadow-[0_0_25px_rgba(255,59,48,0.4)] transition-all rounded-xl transform active:scale-95" isLoading={loading}>
                                 <div className="absolute inset-0 w-full h-full bg-white/20 scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-500 ease-out"></div>
                                 <span className="relative flex items-center justify-center">
-                                    {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Enter the Draft pool'}
+                                    Enter the Draft pool
                                 </span>
                             </Button>
                         </form>

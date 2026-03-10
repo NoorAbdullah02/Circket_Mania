@@ -88,15 +88,13 @@ export async function getAllMatches(req: Request, res: Response): Promise<void> 
         const { status, teamId } = req.query;
         let allMatches;
 
-        if (status) {
-            console.log('Fetching matches with status:', status);
-            allMatches = await db.select().from(matches).where(eq(matches.status, status as any));
-        } else if (teamId) {
-            console.log('Fetching matches for teamId:', teamId);
-            allMatches = await db.select().from(matches)
-                .where(or(eq(matches.teamAId, teamId as string), eq(matches.teamBId, teamId as string)));
+        const conditions = [];
+        if (status) conditions.push(eq(matches.status, status as any));
+        if (teamId) conditions.push(or(eq(matches.teamAId, teamId as string), eq(matches.teamBId, teamId as string)));
+
+        if (conditions.length > 0) {
+            allMatches = await db.select().from(matches).where(and(...conditions));
         } else {
-            console.log('Fetching all matches without filters');
             allMatches = await db.select().from(matches);
         }
 
@@ -404,21 +402,49 @@ export async function updateScore(req: Request, res: Response): Promise<void> {
     }
 }
 
+// Helper to handle cricket over notation (e.g., 10.5 = 10 overs and 5 balls = 10.833 overs)
+function toDecimalOvers(overs: number): number {
+    if (!overs) return 0;
+    const whole = Math.floor(overs);
+    const fraction = parseFloat((overs - whole).toFixed(1));
+
+    // If it looks like cricket notation (e.g., .1 to .6)
+    if (fraction >= 0.1 && fraction <= 0.6) {
+        const balls = Math.round(fraction * 10);
+        // Standard cricket: 6 balls = 1 over. So .1 is 1/6, .5 is 5/6, .6 is 6/6=1.0
+        return whole + (Math.min(balls, 6) / 6);
+    }
+
+    // Otherwise treat as a pure decimal (already converted or whole number)
+    return overs;
+}
+
 // Helper to completely recalculate the points table
 export async function recalculatePointsTable() {
     try {
         console.log('🔄 Recalculating Points Table...');
-        const allTeams = await db.select().from(teams);
+        const allTeams = await db.select({ id: teams.id, name: teams.name }).from(teams);
         console.log(`Processing ${allTeams.length} teams`);
         const settings = await db.select().from(tournamentSettings).limit(1);
-        const pointsPerWin = settings[0]?.pointsPerWin || 2;
-        const pointsPerLoss = settings[0]?.pointsPerLoss || 0;
-        const pointsPerNoResult = settings[0]?.pointsPerNoResult || 1;
+        const pts = settings[0] || { pointsPerWin: 2, pointsPerLoss: 0, pointsPerNoResult: 1, defaultOvers: 10, playersPerTeam: 11 };
+        const pointsPerWin = pts.pointsPerWin;
+        const pointsPerLoss = pts.pointsPerLoss;
+        const pointsPerNoResult = pts.pointsPerNoResult;
+        const defaultOvers = pts.defaultOvers;
+        const playersPerTeam = pts.playersPerTeam;
+        const allOutWickets = playersPerTeam - 1;
 
         for (const team of allTeams) {
-            const teamMatches = await db.select().from(matches).where(
+            const teamMatches = await db.select({
+                id: matches.id,
+                teamAId: matches.teamAId,
+                teamBId: matches.teamBId,
+                status: matches.status,
+                winnerTeamId: matches.winnerTeamId,
+                overs: matches.overs,
+            }).from(matches).where(
                 and(
-                    or(eq(matches.status, 'completed' as any), eq(matches.status, 'no_result' as any)),
+                    eq(matches.matchType, 'league'),
                     or(eq(matches.teamAId, team.id), eq(matches.teamBId, team.id))
                 )
             );
@@ -427,16 +453,32 @@ export async function recalculatePointsTable() {
                 played: 0,
                 wins: 0,
                 losses: 0,
+                ties: 0,
+                noResults: 0,
                 points: 0,
-                runsScored: 0,
-                oversPlayed: 0,
-                runsConceded: 0,
-                oversBowled: 0,
+                totalRunsScored: 0,
+                totalOversPlayed: 0,
+                totalRunsConceded: 0,
+                totalOversBowled: 0,
             };
 
             for (const match of teamMatches) {
-                stats.played++;
+                if (!['completed', 'no_result', 'cancelled'].includes(match.status)) continue;
 
+                stats.played++;
+                const [score] = await db.select().from(scores).where(eq(scores.matchId, match.id)).limit(1);
+                if (!score) continue;
+
+                const isTeamA = match.teamAId === team.id;
+                const teamRuns = isTeamA ? (score.teamARuns || 0) : (score.teamBRuns || 0);
+                const oppRuns = isTeamA ? (score.teamBRuns || 0) : (score.teamARuns || 0);
+                const teamWickets = isTeamA ? (score.teamAWickets || 0) : (score.teamBWickets || 0);
+                const oppWickets = isTeamA ? (score.teamBWickets || 0) : (score.teamAWickets || 0);
+                const teamOversActual = isTeamA ? (score.teamAOversPlayed || 0) : (score.teamBOversPlayed || 0);
+                const oppOversActual = isTeamA ? (score.teamBOversPlayed || 0) : (score.teamAOversPlayed || 0);
+                const matchOverQuota = match.overs || defaultOvers;
+
+                // Points allocation
                 if (match.status === 'completed') {
                     if (match.winnerTeamId === team.id) {
                         stats.wins++;
@@ -445,54 +487,76 @@ export async function recalculatePointsTable() {
                         stats.losses++;
                         stats.points += pointsPerLoss;
                     } else {
+                        stats.ties++;
                         stats.points += pointsPerNoResult;
                     }
-
-                    const [score] = await db.select().from(scores).where(eq(scores.matchId, match.id)).limit(1);
-                    if (score) {
-                        const isTeamA = match.teamAId === team.id;
-                        stats.runsScored += isTeamA ? (score.teamARuns || 0) : (score.teamBRuns || 0);
-                        stats.oversPlayed += isTeamA ? (score.teamAOversPlayed || 0) : (score.teamBOversPlayed || 0);
-                        stats.runsConceded += isTeamA ? (score.teamBRuns || 0) : (score.teamARuns || 0);
-                        stats.oversBowled += isTeamA ? (score.teamBOversPlayed || 0) : (score.teamAOversPlayed || 0);
-                    }
                 } else {
+                    stats.noResults++;
                     stats.points += pointsPerNoResult;
                 }
+
+                // NRR components
+                // If all out, use full quota. Otherwise use actual overs.
+                const teamEffectiveOvers = (teamWickets >= allOutWickets) ? matchOverQuota : toDecimalOvers(teamOversActual);
+                const oppEffectiveOvers = (oppWickets >= allOutWickets) ? matchOverQuota : toDecimalOvers(oppOversActual);
+
+                stats.totalRunsScored += Number(teamRuns || 0);
+                stats.totalOversPlayed += Number(teamEffectiveOvers || 0);
+                stats.totalRunsConceded += Number(oppRuns || 0);
+                stats.totalOversBowled += Number(oppEffectiveOvers || 0);
+
+                console.log(`   [Match ${match.id}] ${team.name}: ${teamRuns}/${teamWickets} in ${teamEffectiveOvers} overs (Opp: ${oppRuns}/${oppWickets} in ${oppEffectiveOvers})`);
             }
 
-            let nrr = 0;
-            if (stats.oversPlayed > 0 && stats.oversBowled > 0) {
-                nrr = (stats.runsScored / stats.oversPlayed) - (stats.runsConceded / stats.oversBowled);
-            }
+            // Calculate final NRR
+            let finalNrr = 0;
+            console.log(`   [Debug] ${team.name} final totals: Scored=${stats.totalRunsScored}, Played=${stats.totalOversPlayed}, Conceded=${stats.totalRunsConceded}, Bowled=${stats.totalOversBowled}`);
 
-            const [existing] = await db.select().from(pointsTable).where(eq(pointsTable.teamId, team.id)).limit(1);
-            if (existing) {
-                await db.update(pointsTable).set({
-                    matchesPlayed: stats.played,
-                    wins: stats.wins,
-                    losses: stats.losses,
-                    points: stats.points,
-                    nrr: parseFloat(nrr.toFixed(3)),
-                    totalRunsScored: stats.runsScored,
-                    totalOversPlayed: stats.oversPlayed,
-                    totalRunsConceded: stats.runsConceded,
-                    totalOversBowled: stats.oversBowled,
-                }).where(eq(pointsTable.teamId, team.id));
+            if (stats.totalOversPlayed > 0 && stats.totalOversBowled > 0) {
+                const scoredRR = stats.totalRunsScored / stats.totalOversPlayed;
+                const concededRR = stats.totalRunsConceded / stats.totalOversBowled;
+                finalNrr = scoredRR - concededRR;
+                console.log(`   [Recalc] ${team.name}: ScoredRR=${scoredRR.toFixed(3)}, ConcededRR=${concededRR.toFixed(3)}, NRR=${finalNrr.toFixed(3)}`);
             } else {
-                await db.insert(pointsTable).values({
+                console.log(`   [Recalc] ${team.name}: Overs played/bowled is 0 or NaN, skipping NRR calculation`);
+            }
+
+            // Final NaN check
+            if (isNaN(finalNrr)) finalNrr = 0;
+            stats.totalRunsScored = stats.totalRunsScored || 0;
+            stats.totalOversPlayed = stats.totalOversPlayed || 0;
+            stats.totalRunsConceded = stats.totalRunsConceded || 0;
+            stats.totalOversBowled = stats.totalOversBowled || 0;
+
+            console.log(`✅ Updated Points Table for ${team.name}: P=${stats.played} W=${stats.wins} NRR=${finalNrr.toFixed(3)}`);
+
+            await db.insert(pointsTable)
+                .values({
                     teamId: team.id,
                     matchesPlayed: stats.played,
                     wins: stats.wins,
                     losses: stats.losses,
                     points: stats.points,
-                    nrr: parseFloat(nrr.toFixed(3)),
-                    totalRunsScored: stats.runsScored,
-                    totalOversPlayed: stats.oversPlayed,
-                    totalRunsConceded: stats.runsConceded,
-                    totalOversBowled: stats.oversBowled,
+                    nrr: finalNrr,
+                    totalRunsScored: stats.totalRunsScored,
+                    totalOversPlayed: stats.totalOversPlayed,
+                    totalRunsConceded: stats.totalRunsConceded,
+                    totalOversBowled: stats.totalOversBowled,
+                })
+                .onConflictDoUpdate({
+                    target: pointsTable.teamId,
+                    set: {
+                        matchesPlayed: stats.played,
+                        wins: stats.wins,
+                        losses: stats.losses,
+                        points: stats.points,
+                        nrr: finalNrr,
+                        totalRunsScored: stats.totalRunsScored,
+                        totalOversPlayed: stats.totalOversPlayed,
+                        totalRunsConceded: stats.totalRunsConceded,
+                        totalOversBowled: stats.totalOversBowled,
+                    },
                 });
-            }
         }
     } catch (error) {
         console.error('Points table recalculation failed:', error);

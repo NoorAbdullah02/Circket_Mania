@@ -16,7 +16,7 @@ router.post('/', authenticate, adminOnly, createTeam);
 router.put('/:id', authenticate, captainOrAdmin, updateTeam); // Team captains can also update their team
 router.delete('/:id', authenticate, adminOnly, deleteTeam);
 router.post('/assign-players', authenticate, adminOnly, assignPlayersToTeam);
-router.post('/remove-player/:playerId', authenticate, adminOnly, removePlayerFromTeam);
+router.post('/unassign-player', authenticate, adminOnly, removePlayerFromTeam);
 router.post('/set-captain', authenticate, adminOnly, setCaptain);
 
 export default router;
