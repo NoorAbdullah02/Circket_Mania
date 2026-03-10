@@ -1902,7 +1902,6 @@ export default function AdminDashboard() {
                                                             toast.error(err.response?.data?.error || 'Failed to save toss');
                                                         }
                                                     }}
-                                                    isLoading={scoringMatch?.isTossUpdating}
                                                 >
                                                     {scoringMatch?.isTossUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Flag className="w-4 h-4" />} SAVE TOSS RESULT
                                                 </Button>
