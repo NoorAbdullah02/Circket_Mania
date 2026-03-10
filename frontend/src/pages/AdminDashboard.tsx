@@ -1,21 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Shield, Calendar, Loader2, Database, Plus, Search, Edit, Trash2, Camera, Activity, Crown, Check, X, Star, History, User, Award, Zap, Target, Mail, Hash, Flag } from 'lucide-react';
+import { Users, Shield, Calendar, Loader2, Database, Plus, Search, Edit, Trash2, Camera, Activity, Crown, Check, X, Star, History, User, Award, Zap, Target, Mail, Hash, Flag, Phone, RotateCcw, Trophy, UserMinus } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import api from '../api/client';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import { formatTime12h } from '../lib/utils';
 
 const PIE_COLORS = ['#38BDF8', '#FFD60A', '#FF3B30', '#22C55E', '#A855F7', '#EC4899'];
 
 export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState('overview');
     const [searchQuery, setSearchQuery] = useState('');
-    const queryClient = useQueryClient();
+    const container = useRef<HTMLDivElement>(null);
+    const hasAnimated = useRef(false);
 
     const { data: stats, isLoading: loadingStats } = useQuery({
         queryKey: ['admin-stats'],
@@ -52,8 +56,19 @@ export default function AdminDashboard() {
 
     const filteredPlayers = players?.filter((player: any) => {
         const query = searchQuery.toLowerCase();
-        return player.name?.toLowerCase().includes(query) || player.batch?.toLowerCase().includes(query);
+        return player.name?.toLowerCase().includes(query) ||
+            player.batch?.toLowerCase().includes(query) ||
+            player.phone?.toLowerCase().includes(query);
     });
+
+    useGSAP(() => {
+        if (!loadingStats && !loadingPlayers && !hasAnimated.current) {
+            hasAnimated.current = true;
+            const tl = gsap.timeline({ defaults: { ease: 'power3.out', duration: 1 } });
+            tl.from('.admin-title', { x: -30, opacity: 0 });
+            tl.from('.tab-container', { x: 30, opacity: 0 }, '-=0.5');
+        }
+    }, { dependencies: [loadingStats, loadingPlayers], scope: container });
 
     const generateMatchesMutation = useMutation({
         mutationFn: async (data: any) => api.post('/matches/auto-generate', data),
@@ -82,6 +97,7 @@ export default function AdminDashboard() {
     const [assigningPlayer, setAssigningPlayer] = useState<any>(null);
     const [editingPlayer, setEditingPlayer] = useState<any>(null);
     const [viewingPlayer, setViewingPlayer] = useState<any>(null);
+    const [unassignConfirmation, setUnassignConfirmation] = useState<any>(null);
     const [editingMatch, setEditingMatch] = useState<any>(null);
     const [showMatchForm, setShowMatchForm] = useState(false);
     const [newTeam, setNewTeam] = useState({ name: '', shortName: '', color: '#38BDF8', logo: '', coverPhoto: '' });
@@ -95,6 +111,7 @@ export default function AdminDashboard() {
 
     // Scoring states
     const [scoringMatch, setScoringMatch] = useState<any>(null);
+    const [isInitializingScoring, setIsInitializingScoring] = useState(false);
     const [matchPlayerStatsData, setMatchPlayerStatsData] = useState<any[]>([]);
     const [scoreUpdates, setScoreUpdates] = useState({
         teamARuns: 0, teamAWickets: 0, teamAOversPlayed: 0,
@@ -138,12 +155,23 @@ export default function AdminDashboard() {
         mutationFn: async ({ playerId, teamId }: { playerId: string, teamId: string }) =>
             api.post('/teams/assign-players', { playerIds: [playerId], teamId }),
         onSuccess: () => {
-            toast.success('Player assigned and activation email sent!');
+            toast.success('Player assigned and activation email sent! 💌');
             setAssigningPlayer(null);
             queryClient.invalidateQueries({ queryKey: ['admin-players'] });
             queryClient.invalidateQueries({ queryKey: ['admin-teams'] });
         },
         onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to assign player')
+    });
+
+    const unassignPlayerMutation = useMutation({
+        mutationFn: async (playerId: string) =>
+            api.post('/teams/unassign-player', { playerId }),
+        onSuccess: () => {
+            toast.success('Player returned to drafting pool 🕊️');
+            queryClient.invalidateQueries({ queryKey: ['admin-players'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-teams'] });
+        },
+        onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to unassign player')
     });
 
     const updatePlayerMutation = useMutation({
@@ -218,6 +246,22 @@ export default function AdminDashboard() {
             queryClient.invalidateQueries({ queryKey: ['admin-matches'] });
         },
         onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to update match')
+    });
+
+    const sendReminderMutation = useMutation({
+        mutationFn: async (id: string) => api.post(`/matches/${id}/remind`),
+        onSuccess: (data: any) => {
+            toast.success(data.data?.message || 'Reminders sent! 📧');
+        },
+        onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to send reminders')
+    });
+
+    const sendResultsMutation = useMutation({
+        mutationFn: async (id: string) => api.post(`/matches/${id}/send-results`),
+        onSuccess: (data: any) => {
+            toast.success(data.data?.message || 'Match results sent! 🏏');
+        },
+        onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to send results')
     });
 
     const deleteMatchMutation = useMutation({
@@ -304,6 +348,7 @@ export default function AdminDashboard() {
     const startScoring = async (match: any) => {
         try {
             setScoringMatch(match);
+            setIsInitializingScoring(true);
 
             // 1. Fetch current scoreboard
             const { data: scoreData } = await api.get(`/matches/${match.id}`);
@@ -338,7 +383,6 @@ export default function AdminDashboard() {
                         runsScored: 0,
                         ballsFaced: 0,
                         fours: 0,
-                        sixes: 0,
                         wickets: 0,
                         runsConceded: 0,
                         ballsBowled: 0,
@@ -349,6 +393,8 @@ export default function AdminDashboard() {
             }
         } catch (error) {
             toast.error('Failed to initialize scoring data');
+        } finally {
+            setIsInitializingScoring(false);
         }
     };
 
@@ -362,9 +408,15 @@ export default function AdminDashboard() {
         try {
             // Update score
             await updateMatchScoreMutation.mutateAsync({ matchId: scoringMatch.id, score: scoreUpdates });
-            // Update player stats
-            await updateMatchStatsMutation.mutateAsync({ matchId: scoringMatch.id, stats: matchPlayerStatsData });
-        } catch (error) { }
+            // Update player stats - filter out entries with no teamId
+            const validStats = matchPlayerStatsData.filter((s: any) => s.playerId && s.teamId);
+            if (validStats.length > 0) {
+                await updateMatchStatsMutation.mutateAsync({ matchId: scoringMatch.id, stats: validStats });
+            }
+        } catch (error: any) {
+            console.error('Save scoring error:', error);
+            throw error; // Re-throw so finalizeMatch knows it failed
+        }
     };
 
     const finalizeMatch = async (winnerTeamId: string, manOfTheMatchId: string) => {
@@ -374,12 +426,21 @@ export default function AdminDashboard() {
             // Save final scores and player stats first
             await saveScoring();
 
-            completeMatchMutation.mutate({
-                matchId: scoringMatch.id,
-                data: { winnerTeamId, manOfTheMatch: manOfTheMatchId, status: 'completed' }
-            });
-        } catch (error) {
+            // Handle "no_result" as a special status
+            if (winnerTeamId === 'no_result') {
+                completeMatchMutation.mutate({
+                    matchId: scoringMatch.id,
+                    data: { status: 'no_result' }
+                });
+            } else {
+                completeMatchMutation.mutate({
+                    matchId: scoringMatch.id,
+                    data: { winnerTeamId, manOfTheMatch: manOfTheMatchId || null, status: 'completed' }
+                });
+            }
+        } catch (error: any) {
             console.error('Finalize error:', error);
+            toast.error('Failed to save scores before finalizing. Please try again.');
         }
     };
 
@@ -404,14 +465,14 @@ export default function AdminDashboard() {
     })) : [];
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative" ref={container}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-                <div>
+                <div className="admin-title">
                     <h1 className="text-4xl md:text-5xl font-heading tracking-widest text-white uppercase neon-text-red">Admin Control</h1>
-                    <p className="text-gray-400 mt-2">Manage tournament parameters and drafting</p>
+                    <p className="text-gray-400 mt-2 font-bold text-xs uppercase tracking-widest">Department: <span className="text-brand-yellow">ICE</span> • Strategic Management</p>
                 </div>
 
-                <div className="flex gap-2 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/5 overflow-x-auto shadow-2xl relative z-20 custom-scrollbar">
+                <div className="flex gap-2 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/5 overflow-x-auto shadow-2xl relative z-20 custom-scrollbar tab-container">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
@@ -454,7 +515,7 @@ export default function AdminDashboard() {
                                             { label: 'Drafted/Selected', value: stats?.selectedPlayers, color: 'text-emerald-400', bg: 'bg-emerald-400/20', border: 'hover:border-emerald-400/50 hover:shadow-[0_0_30px_rgba(52,211,153,0.2)]' },
                                             { label: 'Matches Scheduled', value: stats?.totalMatches, color: 'text-brand-red', bg: 'bg-brand-red/20', border: 'hover:border-brand-red/50 hover:shadow-[0_0_30px_rgba(255,59,48,0.2)]' },
                                         ].map((stat, i) => (
-                                            <Card key={i} className={`relative bg-black/60 backdrop-blur-xl border border-white/5 rounded-3xl transition-all duration-500 overflow-hidden group ${stat.border}`}>
+                                            <Card key={i} className={`stat-card relative bg-black/60 backdrop-blur-xl border border-white/5 rounded-3xl transition-all duration-500 overflow-hidden group ${stat.border}`}>
                                                 <div className={`absolute -inset-4 ${stat.bg} blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
                                                 <CardContent className="p-8 relative z-10">
                                                     <p className="text-gray-500 text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">{stat.label}</p>
@@ -793,44 +854,80 @@ export default function AdminDashboard() {
                             <AnimatePresence>
                                 {assigningPlayer && (
                                     <motion.div
-                                        initial={{ opacity: 0, scale: 0.95 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.95 }}
-                                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
                                     >
-                                        <Card className="glass-card w-full max-w-md border-brand-blue/30 p-6">
-                                            <div className="flex justify-between items-center mb-6">
-                                                <h3 className="text-xl font-heading tracking-widest text-white uppercase">Assign to Franchise</h3>
-                                                <Button variant="ghost" size="sm" onClick={() => setAssigningPlayer(null)}><X /></Button>
-                                            </div>
-                                            <div className="flex items-center gap-4 mb-8 bg-white/5 p-4 rounded-xl">
-                                                <img src={assigningPlayer.profileImage || `https://ui-avatars.com/api/?name=${assigningPlayer.name}`} className="w-12 h-12 rounded-full border border-white/20" />
-                                                <div>
-                                                    <div className="text-white font-bold">{assigningPlayer.name}</div>
-                                                    <div className="text-xs text-brand-blue font-bold uppercase">{assigningPlayer.role}</div>
+                                        <motion.div
+                                            initial={{ scale: 0.9, y: 20 }}
+                                            animate={{ scale: 1, y: 0 }}
+                                            exit={{ scale: 0.9, y: 20 }}
+                                            className="w-full max-w-4xl"
+                                        >
+                                            <Card className="glass-card border-brand-blue/30 overflow-hidden relative">
+                                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-brand-blue via-brand-yellow to-brand-red"></div>
+                                                <div className="p-8 border-b border-white/10 flex justify-between items-center bg-white/[0.02]">
+                                                    <div className="flex items-center gap-6">
+                                                        <div className="relative">
+                                                            <div className="absolute -inset-2 bg-brand-blue/20 blur-xl rounded-full"></div>
+                                                            <img
+                                                                src={assigningPlayer.profileImage || `https://ui-avatars.com/api/?name=${assigningPlayer.name}`}
+                                                                className="w-16 h-16 rounded-full border-2 border-brand-blue relative z-10"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="text-2xl font-heading tracking-[0.2em] text-white uppercase">Franchise Assignment</h3>
+                                                            <p className="text-gray-400 text-xs uppercase tracking-widest mt-1">Select a destination for <span className="text-brand-blue font-bold">{assigningPlayer.name}</span></p>
+                                                        </div>
+                                                    </div>
+                                                    <Button variant="ghost" size="sm" className="h-10 w-10 p-0 rounded-full hover:bg-white/10" onClick={() => setAssigningPlayer(null)}><X className="w-5 h-5" /></Button>
                                                 </div>
-                                            </div>
-                                            <div className="grid grid-cols-1 gap-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-                                                {teams?.map((team: any) => (
-                                                    <Button
-                                                        key={team.id}
-                                                        variant="outline"
-                                                        className="justify-start gap-4 hover:border-brand-blue group h-14"
-                                                        onClick={() => assignPlayerMutation.mutate({ playerId: assigningPlayer.id, teamId: team.id })}
-                                                        disabled={assignPlayerMutation.isPending}
-                                                    >
-                                                        <div className="w-8 h-8 rounded-full bg-black flex items-center justify-center overflow-hidden">
-                                                            <img src={team.logo || `https://ui-avatars.com/api/?name=${team.name}`} className="w-full h-full object-cover" />
-                                                        </div>
-                                                        <div className="text-left flex-1">
-                                                            <div className="text-sm font-bold text-white uppercase">{team.name}</div>
-                                                            <div className="text-[10px] text-gray-500">{team.players?.length || 0} Slots Filled</div>
-                                                        </div>
-                                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: team.color }} />
-                                                    </Button>
-                                                ))}
-                                            </div>
-                                        </Card>
+
+                                                <div className="p-8 bg-black/40">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[60vh] overflow-y-auto pr-4 custom-scrollbar">
+                                                        {teams?.map((team: any) => (
+                                                            <div
+                                                                key={team.id}
+                                                                className="group relative cursor-pointer"
+                                                                onClick={() => assignPlayerMutation.mutate({ playerId: assigningPlayer.id, teamId: team.id })}
+                                                            >
+                                                                <div className="absolute -inset-1 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-2xl group-hover:via-white/20 transition duration-500"></div>
+                                                                <Card className="relative h-full bg-black/60 border border-white/10 hover:border-white/30 p-6 transition-all duration-300 transform group-hover:-translate-y-2 flex flex-col items-center text-center">
+                                                                    <div className="absolute top-0 right-0 p-3">
+                                                                        <div className="w-3 h-3 rounded-full shadow-[0_0_10px_currentColor]" style={{ backgroundColor: team.color, color: team.color }} />
+                                                                    </div>
+
+                                                                    <div className="w-20 h-20 rounded-full bg-black/80 p-1 border border-white/10 mb-5 relative group-hover:scale-110 transition-transform duration-500">
+                                                                        <img
+                                                                            src={team.logo || `https://ui-avatars.com/api/?name=${team.name}`}
+                                                                            className="w-full h-full rounded-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+                                                                        />
+                                                                    </div>
+
+                                                                    <h4 className="text-white font-heading tracking-widest uppercase mb-2 group-hover:text-brand-yellow transition-colors">{team?.shortName || team.name}</h4>
+                                                                    <div className="flex items-center gap-2 mt-auto">
+                                                                        <Users className="w-3 h-3 text-gray-500" />
+                                                                        <span className="text-[10px] text-gray-400 font-black tracking-widest uppercase">
+                                                                            {team.players?.length || 0} / 15 Elements
+                                                                        </span>
+                                                                    </div>
+
+                                                                    <div className="mt-4 w-full h-px bg-white/5"></div>
+                                                                    <Button
+                                                                        className="mt-4 w-full h-9 text-[10px] font-black uppercase tracking-widest bg-white/5 hover:bg-brand-blue hover:text-white border-white/10 transition-all"
+                                                                        variant="outline"
+                                                                        disabled={assignPlayerMutation.isPending}
+                                                                    >
+                                                                        Assign Asset
+                                                                    </Button>
+                                                                </Card>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </Card>
+                                        </motion.div>
                                     </motion.div>
                                 )}
                             </AnimatePresence>
@@ -845,6 +942,7 @@ export default function AdminDashboard() {
                                             <tr className="bg-white/5 border-b border-white/5 uppercase text-[10px] tracking-[0.2em] font-bold text-brand-yellow/80">
                                                 <th className="px-8 py-6">Player</th>
                                                 <th className="px-8 py-6">Batch</th>
+                                                <th className="px-8 py-6">Team</th>
                                                 <th className="px-8 py-6">Role</th>
                                                 <th className="px-8 py-6">Status</th>
                                                 <th className="px-8 py-6 text-right">Actions</th>
@@ -858,10 +956,22 @@ export default function AdminDashboard() {
                                                             <div
                                                                 className="w-12 h-12 rounded-full bg-black/50 border-[3px] border-white/10 flex items-center justify-center text-white font-heading overflow-hidden shadow-lg group-hover:scale-110 group-hover:border-brand-yellow/50 transition-all duration-300 relative cursor-pointer"
                                                                 onClick={() => setViewingPlayer(player)}
-                                                                title="View Player Profile"
+                                                                title="View Full Profile"
                                                             >
                                                                 <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none z-10"></div>
-                                                                {player.profileImage ? <img src={player.profileImage} className="w-full h-full object-cover relative z-0" /> : <div className="w-full h-full bg-gradient-to-br from-brand-blue to-accent flex items-center justify-center text-xl">{player.name?.charAt(0)}</div>}
+                                                                {player.profileImage ? (
+                                                                    <img
+                                                                        src={player.profileImage}
+                                                                        className="w-full h-full object-cover relative z-0"
+                                                                        onError={(e) => {
+                                                                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${player.name}&background=0D0D0D&color=fff&size=128`;
+                                                                        }}
+                                                                    />
+                                                                ) : (
+                                                                    <div className="w-full h-full bg-gradient-to-br from-brand-blue to-accent flex items-center justify-center text-xl">
+                                                                        {player.name?.charAt(0)}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                             <div>
                                                                 <div className="text-white font-bold tracking-wider flex items-center gap-2 text-sm">
@@ -872,47 +982,80 @@ export default function AdminDashboard() {
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 py-4 text-brand-blue text-sm">{player.batch}</td>
-                                                    <td className="px-6 py-4 text-gray-300 text-sm">{player.role || 'Undecided'}</td>
-                                                    <td className="px-6 py-4">
-                                                        <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-widest ${player.status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                                                            {player.status}
-                                                        </span>
+                                                    <td className="px-8 py-5">
+                                                        <span className="text-white font-bold text-xs uppercase tracking-widest">{player.batch || '—'}</span>
                                                     </td>
-                                                    <td className="px-6 py-4 text-right space-x-2">
-                                                        {player.status === 'pending' ? (
+                                                    <td className="px-8 py-5">
+                                                        <div className="flex items-center gap-3">
+                                                            {player.teamId ? (
+                                                                <div className="flex items-center gap-2 group/team cursor-help" title={`Assigned to ${player.team?.name}`}>
+                                                                    <div className="w-8 h-8 rounded-lg bg-black border border-white/10 flex items-center justify-center overflow-hidden shadow-inner transform group-hover/team:rotate-12 transition-transform duration-300">
+                                                                        <img src={player.team?.logo || `https://ui-avatars.com/api/?name=${player.team?.shortName}`} className="w-full h-full object-cover" />
+                                                                    </div>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-[10px] text-white font-black uppercase tracking-[0.15em]">{player.team?.shortName}</span>
+                                                                        <div className="h-0.5 w-full bg-gradient-to-r from-brand-blue to-transparent opacity-50"></div>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center gap-2 opacity-30">
+                                                                    <div className="w-8 h-8 rounded-lg border border-dashed border-white/20 flex items-center justify-center">
+                                                                        <UserMinus className="w-3.5 h-3.5 text-gray-500" />
+                                                                    </div>
+                                                                    <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest italic">Undrafted</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-8 py-5">
+                                                        <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all duration-500 ${player.status === 'activated'
+                                                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
+                                                            : 'bg-brand-yellow/10 text-brand-yellow border-brand-yellow/20'
+                                                            }`}>
+                                                            <div className={`w-1.5 h-1.5 rounded-full mr-2 ${player.status === 'activated' ? 'bg-emerald-400 animate-pulse' : 'bg-brand-yellow'}`}></div>
+                                                            {player.status}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-8 py-5 text-right">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            {!player.teamId ? (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-9 px-5 bg-brand-blue/10 border-brand-blue/30 text-brand-blue hover:bg-brand-blue hover:text-white uppercase text-[10px] font-black tracking-widest rounded-xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-brand-blue/5"
+                                                                    onClick={() => setAssigningPlayer(player)}
+                                                                >
+                                                                    Draft Player
+                                                                </Button>
+                                                            ) : (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-9 px-5 text-brand-red/70 hover:text-white hover:bg-brand-red uppercase text-[10px] font-black tracking-widest rounded-xl transition-all border border-brand-red/20 hover:border-brand-red"
+                                                                    onClick={() => setUnassignConfirmation(player)}
+                                                                    disabled={unassignPlayerMutation.isPending}
+                                                                >
+                                                                    <RotateCcw className="w-3 h-3 mr-2" /> Unassign
+                                                                </Button>
+                                                            )}
+                                                            <div className="w-px h-6 bg-white/5 mx-1"></div>
                                                             <Button
-                                                                variant="outline"
+                                                                variant="ghost"
                                                                 size="sm"
-                                                                className="border-brand-blue text-brand-blue hover:bg-brand-blue/20 gap-2 text-xs uppercase font-bold"
-                                                                onClick={() => setAssigningPlayer(player)}
+                                                                className="h-9 w-9 p-0 text-gray-500 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
+                                                                onClick={() => setEditingPlayer(player)}
                                                             >
-                                                                Select / Assign
+                                                                <Edit className="w-3.5 h-3.5" />
                                                             </Button>
-                                                        ) : (
                                                             <Button
-                                                                variant="outline"
+                                                                variant="ghost"
                                                                 size="sm"
-                                                                className="border-brand-yellow text-brand-yellow hover:bg-brand-yellow/20 gap-2 text-xs uppercase font-bold"
-                                                                onClick={() => {
-                                                                    if (confirm(`Are you sure you want to unassign ${player.name} from their team?`)) {
-                                                                        updatePlayerMutation.mutate({ ...player, teamId: null, status: 'pending' });
-                                                                    }
-                                                                }}
+                                                                className="h-9 w-9 p-0 text-gray-700 hover:text-brand-red hover:bg-brand-red/5 rounded-xl transition-colors"
+                                                                onClick={() => { if (confirm('Irreversible Action: Delete this player data permanently?')) deletePlayerMutation.mutate(player.id); }}
                                                             >
-                                                                Unassign
+                                                                <Trash2 className="w-3.5 h-3.5" />
                                                             </Button>
-                                                        )}
-                                                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white" onClick={() => setEditingPlayer(player)}>
-                                                            <Edit className="w-4 h-4" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300" onClick={() => {
-                                                            if (confirm(`Are you sure you want to delete ${player.name}?`)) {
-                                                                deletePlayerMutation.mutate(player.id);
-                                                            }
-                                                        }}>
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </Button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -952,52 +1095,120 @@ export default function AdminDashboard() {
 
                             <AnimatePresence>
                                 {showMatchForm && (
-                                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                        <Card className="glass-card mb-6 border-brand-yellow/30">
-                                            <CardContent className="p-6">
-                                                <form onSubmit={(e) => { e.preventDefault(); createMatchMutation.mutate(newMatch); }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                                    <div className="space-y-2">
-                                                        <Label>Team A</Label>
-                                                        <select className="w-full h-10 bg-black/50 border border-white/10 rounded-md text-white px-3" value={newMatch.teamAId} onChange={(e) => setNewMatch({ ...newMatch, teamAId: e.target.value })} required>
-                                                            <option value="">Select Team A</option>
-                                                            {teams?.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                                        </select>
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <Card className="glass-card mb-12 border-brand-yellow/20 overflow-hidden relative">
+                                            <div className="absolute top-0 right-0 p-8 opacity-5">
+                                                <Trophy className="w-32 h-32 text-brand-yellow" />
+                                            </div>
+                                            <CardHeader className="border-b border-white/5 bg-white/[0.01]">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-brand-yellow/10 rounded-lg">
+                                                        <Calendar className="w-5 h-5 text-brand-yellow" />
                                                     </div>
-                                                    <div className="space-y-2">
-                                                        <Label>Team B</Label>
-                                                        <select className="w-full h-10 bg-black/50 border border-white/10 rounded-md text-white px-3" value={newMatch.teamBId} onChange={(e) => setNewMatch({ ...newMatch, teamBId: e.target.value })} required>
-                                                            <option value="">Select Team B</option>
-                                                            {teams?.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                                        </select>
+                                                    <div>
+                                                        <CardTitle className="text-xl font-heading tracking-widest text-white uppercase">New Arena Dispatch</CardTitle>
+                                                        <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-0.5">Define a new battle between franchises</p>
                                                     </div>
-                                                    <div className="space-y-2">
-                                                        <Label>Date</Label>
-                                                        <Input type="date" value={newMatch.date} onChange={(e) => setNewMatch({ ...newMatch, date: e.target.value })} required />
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="p-8">
+                                                <form onSubmit={(e) => { e.preventDefault(); createMatchMutation.mutate(newMatch); }} className="space-y-8">
+                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                                                        {/* Teams Selection */}
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            <div className="space-y-3">
+                                                                <Label className="text-[10px] font-black uppercase tracking-widest text-brand-blue">Home Franchise (Team A)</Label>
+                                                                <select
+                                                                    className="w-full h-12 bg-black/60 border border-white/10 rounded-xl text-sm text-white px-4 focus:border-brand-blue transition-all outline-none"
+                                                                    value={newMatch.teamAId}
+                                                                    onChange={(e) => setNewMatch({ ...newMatch, teamAId: e.target.value })}
+                                                                    required
+                                                                >
+                                                                    <option value="">Select Team</option>
+                                                                    {teams?.map((t: any) => (<option key={t.id} value={t.id}>{t.name}</option>))}
+                                                                </select>
+                                                            </div>
+                                                            <div className="space-y-3">
+                                                                <Label className="text-[10px] font-black uppercase tracking-widest text-brand-red">Away Franchise (Team B)</Label>
+                                                                <select
+                                                                    className="w-full h-12 bg-black/60 border border-white/10 rounded-xl text-sm text-white px-4 focus:border-brand-red transition-all outline-none"
+                                                                    value={newMatch.teamBId}
+                                                                    onChange={(e) => setNewMatch({ ...newMatch, teamBId: e.target.value })}
+                                                                    required
+                                                                >
+                                                                    <option value="">Select Team</option>
+                                                                    {teams?.filter((t: any) => t.id !== newMatch.teamAId).map((t: any) => (<option key={t.id} value={t.id}>{t.name}</option>))}
+                                                                </select>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Logistics Section */}
+                                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                            <div className="space-y-3">
+                                                                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Event Date</Label>
+                                                                <Input
+                                                                    type="date"
+                                                                    className="h-12 bg-black/60 border-white/10 rounded-xl text-sm focus:border-brand-yellow transition-all"
+                                                                    value={newMatch.date}
+                                                                    onChange={(e) => setNewMatch({ ...newMatch, date: e.target.value })}
+                                                                    required
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-3">
+                                                                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Kickoff Time</Label>
+                                                                <Input
+                                                                    type="time"
+                                                                    className="h-12 bg-black/60 border-white/10 rounded-xl text-sm"
+                                                                    value={newMatch.time}
+                                                                    onChange={(e) => setNewMatch({ ...newMatch, time: e.target.value })}
+                                                                    required
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-3">
+                                                                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Over Limit</Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    className="h-12 bg-black/60 border-white/10 rounded-xl text-sm"
+                                                                    value={newMatch.overs}
+                                                                    onChange={(e) => setNewMatch({ ...newMatch, overs: parseInt(e.target.value) })}
+                                                                    required
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-3">
+                                                                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Stage</Label>
+                                                                <select
+                                                                    className="w-full h-12 bg-black/60 border border-white/10 rounded-xl text-xs text-white px-3"
+                                                                    value={newMatch.matchType}
+                                                                    onChange={(e) => setNewMatch({ ...newMatch, matchType: e.target.value })}
+                                                                >
+                                                                    <option value="league">League</option>
+                                                                    <option value="semi-final">Semi-Final</option>
+                                                                    <option value="final">Final</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div className="space-y-2">
-                                                        <Label>Time</Label>
-                                                        <Input type="time" value={newMatch.time} onChange={(e) => setNewMatch({ ...newMatch, time: e.target.value })} required />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label>Venue</Label>
-                                                        <Input value={newMatch.venue} onChange={(e) => setNewMatch({ ...newMatch, venue: e.target.value })} required />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label>Overs</Label>
-                                                        <Input type="number" value={newMatch.overs} onChange={(e) => setNewMatch({ ...newMatch, overs: parseInt(e.target.value) })} required />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label>Type</Label>
-                                                        <select className="w-full h-10 bg-black/50 border border-white/10 rounded-md text-white px-3" value={newMatch.matchType} onChange={(e) => setNewMatch({ ...newMatch, matchType: e.target.value })}>
-                                                            <option value="league">League</option>
-                                                            <option value="semi-final">Semi-Final</option>
-                                                            <option value="final">Final</option>
-                                                        </select>
-                                                    </div>
-                                                    <div className="flex items-end">
-                                                        <Button type="submit" className="w-full bg-brand-yellow text-black hover:bg-yellow-500 font-bold" disabled={createMatchMutation.isPending}>
-                                                            {createMatchMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'SCHEDULE MATCH'}
-                                                        </Button>
+
+                                                    <div className="flex flex-col md:flex-row gap-4 pt-4 border-t border-white/5">
+                                                        <div className="flex-1 space-y-3">
+                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Neutral Venue</Label>
+                                                            <Input
+                                                                className="h-12 bg-black/60 border-white/10 rounded-xl text-sm"
+                                                                value={newMatch.venue}
+                                                                onChange={(e) => setNewMatch({ ...newMatch, venue: e.target.value })}
+                                                                required
+                                                            />
+                                                        </div>
+                                                        <div className="flex items-end">
+                                                            <Button type="submit" className="h-12 px-12 bg-brand-yellow text-black hover:bg-yellow-400 font-black uppercase tracking-widest rounded-xl transition-all hover:scale-[1.02] shadow-xl shadow-brand-yellow/10" disabled={createMatchMutation.isPending}>
+                                                                {createMatchMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'DEPLOY FIXTURE'}
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                 </form>
                                             </CardContent>
@@ -1010,62 +1221,93 @@ export default function AdminDashboard() {
                                 <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-brand-red" /></div>
                             ) : (
                                 <div className="grid grid-cols-1 gap-4">
-                                    {matches?.filter((m: any) => m.status !== 'completed').map((match: any) => (
-                                        <div key={match.id} className="glass-card p-6 flex flex-col md:flex-row items-center justify-between gap-6 hover:border-brand-blue/40 transition-all group">
-                                            <div className="flex items-center gap-8 flex-1">
-                                                <div className="text-center w-24">
-                                                    <div className="text-xs text-gray-500 font-heading uppercase tracking-tighter">{match.date}</div>
-                                                    <div className="text-brand-blue text-lg font-bold font-heading">{match.time}</div>
+                                    {matches?.filter((m: any) => m.status !== 'completed').map((match: any) => {
+                                        const isFinal = match.matchType?.toLowerCase().includes('final');
+                                        return (
+                                            <Card key={match.id} className={`glass-card p-6 flex flex-col md:flex-row items-center justify-between gap-6 hover:border-brand-blue/40 transition-all group overflow-hidden relative ${isFinal ? 'border-brand-yellow/50 bg-brand-yellow/5' : ''}`}>
+                                                {isFinal && (
+                                                    <div className="absolute top-0 right-0 p-2">
+                                                        <Trophy className="w-4 h-4 text-brand-yellow animate-bounce" />
+                                                    </div>
+                                                )}
+                                                <div className={`absolute top-0 left-0 w-1 h-full ${isFinal ? 'bg-brand-yellow' : 'bg-brand-blue/40'} opacity-0 group-hover:opacity-100 transition-opacity`}></div>
+                                                <div className="flex items-center gap-8 flex-1 w-full">
+                                                    <div className="text-center w-24 flex-shrink-0">
+                                                        <div className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em]">{match.date}</div>
+                                                        <div className={`${isFinal ? 'text-brand-yellow' : 'text-brand-blue'} text-xl font-black font-heading mt-1`}>{formatTime12h(match.time)}</div>
+                                                        <div className="mt-2 text-[8px] font-black uppercase tracking-wider">
+                                                            {match.tossWinner ? (
+                                                                <span className="text-brand-yellow border border-brand-yellow/30 bg-brand-yellow/5 px-2 py-0.5 rounded-full inline-block">
+                                                                    {match.tossWinner === match.teamAId ? (match.teamA?.shortName || match.teamA?.name) : (match.teamB?.shortName || match.teamB?.name)} 🏏 {match.tossDecision || 'Wins'}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-gray-600 border border-white/5 bg-white/5 px-2 py-0.5 rounded-full inline-block">Toss Pending</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-4 flex-1 justify-center md:justify-start">
+                                                        <div className="text-right flex-1 min-w-0">
+                                                            <div className="text-white font-heading tracking-widest uppercase text-xs truncate">{match.teamA?.shortName || match.teamA?.name}</div>
+                                                            <div className="text-brand-yellow font-black text-lg">{match.score?.teamARuns || 0}/{match.score?.teamAWickets || 0}</div>
+                                                        </div>
+                                                        <div className="bg-white/5 w-10 h-10 rounded-full flex items-center justify-center text-[8px] font-black text-gray-500 border border-white/5 flex-shrink-0">VS</div>
+                                                        <div className="text-left flex-1 min-w-0">
+                                                            <div className="text-white font-heading tracking-widest uppercase text-xs truncate">{match.teamB?.shortName || match.teamB?.name}</div>
+                                                            <div className="text-brand-yellow font-black text-lg">{match.score?.teamBRuns || 0}/{match.score?.teamBWickets || 0}</div>
+                                                        </div>
+                                                    </div>
                                                 </div>
 
-                                                <div className="flex items-center gap-4 flex-1">
-                                                    <div className="text-right flex-1">
-                                                        <div className="text-white font-heading tracking-widest uppercase text-sm">{match.teamA?.name}</div>
-                                                        <div className="text-brand-yellow font-bold">{match.score?.teamARuns}/{match.score?.teamAWickets}</div>
+                                                <div className="flex items-center gap-3 w-full md:w-auto border-t md:border-t-0 border-white/5 pt-4 md:pt-0">
+                                                    <div className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-2 ${match.status === 'live' ? 'bg-brand-red/10 text-brand-red border border-brand-red/20' : 'bg-brand-blue/10 text-brand-blue border border-brand-blue/20'}`}>
+                                                        {match.status === 'live' && <div className="w-1.5 h-1.5 rounded-full bg-brand-red animate-pulse"></div>}
+                                                        {match.status}
                                                     </div>
-                                                    <div className="bg-white/5 px-3 py-1 rounded-full text-[10px] font-bold text-gray-400">VS</div>
-                                                    <div className="text-left flex-1">
-                                                        <div className="text-white font-heading tracking-widest uppercase text-sm">{match.teamB?.name}</div>
-                                                        <div className="text-brand-yellow font-bold">{match.score?.teamBRuns}/{match.score?.teamBWickets}</div>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-10 px-4 bg-white/5 border-white/10 text-white hover:bg-brand-blue hover:text-white uppercase text-[9px] font-black tracking-widest rounded-xl transition-all"
+                                                        onClick={() => startScoring(match)}
+                                                    >
+                                                        <Activity className="w-3.5 h-3.5 mr-2" /> {match.status === 'live' ? 'Scoring' : 'Initialize'}
+                                                    </Button>
+                                                    <div className="flex gap-1 ml-auto">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="w-10 h-10 text-gray-400 hover:text-brand-yellow hover:bg-brand-yellow/10 rounded-xl"
+                                                            onClick={() => sendReminderMutation.mutate(match.id)}
+                                                            disabled={sendReminderMutation.isPending}
+                                                            title="Send Match Reminders"
+                                                        >
+                                                            {sendReminderMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-9 w-9 p-0 text-gray-500 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
+                                                            onClick={() => setEditingMatch(match)}
+                                                        >
+                                                            <Edit className="w-3.5 h-3.5" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-9 w-9 p-0 text-gray-700 hover:text-brand-red hover:bg-brand-red/5 rounded-xl transition-colors"
+                                                            onClick={() => { if (confirm('Irreversible: Permanently scrub this match from history?')) deleteMatchMutation.mutate(match.id); }}
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </Button>
                                                     </div>
                                                 </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-2">
-                                                <span className={`px-3 py-1 rounded text-[10px] font-bold uppercase tracking-widest ${match.status === 'live' ? 'bg-brand-red/20 text-brand-red' : 'bg-brand-blue/20 text-brand-blue'}`}>
-                                                    {match.status}
-                                                </span>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="border-white/10 text-white hover:bg-brand-blue hover:text-white"
-                                                    onClick={() => startScoring(match)}
-                                                >
-                                                    <Activity className="w-3 h-3 mr-2" /> {match.status === 'live' ? 'Live Score' : 'Start Scoring'}
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-gray-400 hover:text-white"
-                                                    onClick={() => setEditingMatch(match)}
-                                                >
-                                                    <Edit className="w-3 h-3" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-red-400 hover:text-red-300"
-                                                    onClick={() => { if (confirm('Delete match?')) deleteMatchMutation.mutate(match.id); }}
-                                                >
-                                                    <Trash2 className="w-3 h-3" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ))}
+                                            </Card>
+                                        );
+                                    })}
                                     {matches?.filter((m: any) => m.status !== 'completed').length === 0 && (
-                                        <div className="text-center py-20 bg-black/40 rounded-xl border border-dashed border-white/10">
-                                            <Calendar className="w-12 h-12 mx-auto text-gray-600 mb-4 opacity-30" />
-                                            <p className="text-gray-500">No scheduled matches. Check history for results.</p>
+                                        <div className="text-center py-20 bg-black/40 rounded-3xl border border-dashed border-white/10">
+                                            <Calendar className="w-12 h-12 mx-auto text-gray-600 mb-4 opacity-20" />
+                                            <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">No active deployments found</p>
                                         </div>
                                     )}
                                 </div>
@@ -1118,6 +1360,16 @@ export default function AdminDashboard() {
                                                     onClick={() => startScoring(match)}
                                                 >
                                                     <Database className="w-3 h-3" /> Edit Score
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-brand-blue hover:text-white"
+                                                    onClick={() => sendResultsMutation.mutate(match.id)}
+                                                    disabled={sendResultsMutation.isPending}
+                                                    title="Send Results Email"
+                                                >
+                                                    {sendResultsMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
@@ -1307,7 +1559,14 @@ export default function AdminDashboard() {
                                         <Hash className="w-4 h-4 text-brand-blue" />
                                         <div>
                                             <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Jersey Number</div>
-                                            <div className="text-xs text-white">#{viewingPlayer.jerseyNumber || '--'}</div>
+                                            <div className="text-xs text-white uppercase font-bold tracking-widest">#{viewingPlayer.jerseyNumber || '--'}</div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white/5 p-4 rounded-xl border border-white/10 flex items-center gap-4">
+                                        <Phone className="w-4 h-4 text-brand-red" />
+                                        <div>
+                                            <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Phone Number</div>
+                                            <div className="text-xs text-white uppercase font-bold tracking-widest">{viewingPlayer.phone || 'N/A'}</div>
                                         </div>
                                     </div>
                                     <div className="bg-white/5 p-4 rounded-xl border border-white/10 flex items-center gap-4">
@@ -1422,6 +1681,70 @@ export default function AdminDashboard() {
                     </motion.div>
                 )}
             </AnimatePresence>
+            {/* Unassign Confirmation Modal */}
+            <AnimatePresence>
+                {unassignConfirmation && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            className="bg-brand-bg border border-brand-red/20 rounded-[2rem] p-8 w-full max-w-md shadow-2xl text-center relative overflow-hidden"
+                        >
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-brand-red to-transparent"></div>
+
+                            <div className="w-20 h-20 rounded-2xl bg-brand-red/10 flex items-center justify-center mx-auto mb-6 border border-brand-red/20">
+                                <RotateCcw className="w-10 h-10 text-brand-red animate-pulse" />
+                            </div>
+
+                            <h3 className="text-2xl font-heading text-white tracking-widest uppercase mb-2">Relinquish Asset?</h3>
+                            <p className="text-gray-400 text-sm leading-relaxed mb-8">
+                                You are about to return <span className="text-white font-bold">{unassignConfirmation.name}</span> to the <span className="text-brand-yellow font-bold">Draft Pool</span>.
+                                This player will be removed from <span className="text-brand-blue font-bold">{unassignConfirmation.team?.name || 'their team'}</span> immediately.
+                            </p>
+
+                            <div className="bg-black/40 border border-white/5 rounded-2xl p-4 mb-8 flex items-center gap-4 text-left">
+                                <div className="w-12 h-12 rounded-lg bg-black border border-white/10 overflow-hidden">
+                                    {unassignConfirmation.profileImage ? (
+                                        <img src={unassignConfirmation.profileImage} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full bg-brand-blue flex items-center justify-center text-white font-bold">{unassignConfirmation.name?.[0]}</div>
+                                    )}
+                                </div>
+                                <div>
+                                    <div className="text-xs font-black text-white uppercase tracking-widest">{unassignConfirmation.name}</div>
+                                    <div className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter mt-0.5">{unassignConfirmation.role} • Batch {unassignConfirmation.batch}</div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-3">
+                                <Button
+                                    className="h-12 bg-brand-red text-white hover:bg-red-600 font-black uppercase tracking-[0.2em] rounded-xl transition-all hover:scale-[1.02]"
+                                    onClick={() => {
+                                        unassignPlayerMutation.mutate(unassignConfirmation.id);
+                                        setUnassignConfirmation(null);
+                                    }}
+                                    disabled={unassignPlayerMutation.isPending}
+                                >
+                                    {unassignPlayerMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'CONFIRM UNASSIGN'}
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    className="text-gray-500 hover:text-white font-bold uppercase text-[10px] tracking-widest"
+                                    onClick={() => setUnassignConfirmation(null)}
+                                >
+                                    Abort Operation
+                                </Button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Match Scoring Modal */}
             <AnimatePresence>
@@ -1451,208 +1774,280 @@ export default function AdminDashboard() {
                                 <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white" onClick={() => setScoringMatch(null)}><X className="w-6 h-6" /></Button>
                             </div>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                {/* Summary Section */}
-                                <div className="space-y-6">
-                                    <Card className="glass-card">
-                                        <CardHeader className="pb-2">
-                                            <CardTitle className="text-sm font-heading tracking-widest text-brand-blue uppercase">Team Totals</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-6">
-                                            <div className="space-y-4">
-                                                <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                                                    <Label className="text-brand-yellow font-bold text-[10px] uppercase mb-2 block">{scoringMatch.teamA?.name}</Label>
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                        <div className="space-y-1">
-                                                            <span className="text-[10px] text-gray-500 uppercase">Runs</span>
-                                                            <Input type="number" value={scoreUpdates.teamARuns} onChange={(e) => setScoreUpdates({ ...scoreUpdates, teamARuns: parseInt(e.target.value) || 0 })} className="h-8 text-sm bg-black/50" />
+                            {isInitializingScoring ? (
+                                <div className="flex flex-col items-center justify-center p-20 min-h-[400px]">
+                                    <Loader2 className="w-12 h-12 animate-spin text-brand-red mb-6" />
+                                    <p className="text-gray-400 font-heading tracking-[0.2em] text-sm uppercase animate-pulse text-center">Loading Live Match Data...</p>
+                                    <p className="text-gray-600 text-[10px] mt-2 italic">Please wait while we sync the scoreboard and player rosters.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                    {/* Summary Section */}
+                                    <div className="space-y-6">
+                                        <Card className="glass-card">
+                                            <CardHeader className="pb-2">
+                                                <CardTitle className="text-sm font-heading tracking-widest text-brand-blue uppercase">Team Totals</CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="space-y-6">
+                                                <div className="space-y-4">
+                                                    <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                                                        <Label className="text-brand-yellow font-bold text-[10px] uppercase mb-2 block">{scoringMatch.teamA?.name}</Label>
+                                                        <div className="grid grid-cols-3 gap-2">
+                                                            <div className="space-y-1">
+                                                                <span className="text-[10px] text-gray-500 uppercase">Runs</span>
+                                                                <Input type="number" value={scoreUpdates.teamARuns} onChange={(e) => setScoreUpdates({ ...scoreUpdates, teamARuns: parseInt(e.target.value) || 0 })} className="h-8 text-sm bg-black/50" />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <span className="text-[10px] text-gray-500 uppercase">Wkts</span>
+                                                                <Input type="number" value={scoreUpdates.teamAWickets} onChange={(e) => setScoreUpdates({ ...scoreUpdates, teamAWickets: parseInt(e.target.value) || 0 })} className="h-8 text-sm bg-black/50" />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <span className="text-[10px] text-gray-500 uppercase">Overs</span>
+                                                                <Input type="number" step="0.1" value={scoreUpdates.teamAOversPlayed} onChange={(e) => setScoreUpdates({ ...scoreUpdates, teamAOversPlayed: parseFloat(e.target.value) || 0 })} className="h-8 text-sm bg-black/50" />
+                                                            </div>
                                                         </div>
-                                                        <div className="space-y-1">
-                                                            <span className="text-[10px] text-gray-500 uppercase">Wkts</span>
-                                                            <Input type="number" value={scoreUpdates.teamAWickets} onChange={(e) => setScoreUpdates({ ...scoreUpdates, teamAWickets: parseInt(e.target.value) || 0 })} className="h-8 text-sm bg-black/50" />
-                                                        </div>
-                                                        <div className="space-y-1">
-                                                            <span className="text-[10px] text-gray-500 uppercase">Overs</span>
-                                                            <Input type="number" step="0.1" value={scoreUpdates.teamAOversPlayed} onChange={(e) => setScoreUpdates({ ...scoreUpdates, teamAOversPlayed: parseFloat(e.target.value) || 0 })} className="h-8 text-sm bg-black/50" />
+                                                    </div>
+
+                                                    <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                                                        <Label className="text-brand-blue font-bold text-[10px] uppercase mb-2 block">{scoringMatch.teamB?.name}</Label>
+                                                        <div className="grid grid-cols-3 gap-2">
+                                                            <div className="space-y-1">
+                                                                <span className="text-[10px] text-gray-500 uppercase">Runs</span>
+                                                                <Input type="number" value={scoreUpdates.teamBRuns} onChange={(e) => setScoreUpdates({ ...scoreUpdates, teamBRuns: parseInt(e.target.value) || 0 })} className="h-8 text-sm bg-black/50" />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <span className="text-[10px] text-gray-500 uppercase">Wkts</span>
+                                                                <Input type="number" value={scoreUpdates.teamBWickets} onChange={(e) => setScoreUpdates({ ...scoreUpdates, teamBWickets: parseInt(e.target.value) || 0 })} className="h-8 text-sm bg-black/50" />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <span className="text-[10px] text-gray-500 uppercase">Overs</span>
+                                                                <Input type="number" step="0.1" value={scoreUpdates.teamBOversPlayed} onChange={(e) => setScoreUpdates({ ...scoreUpdates, teamBOversPlayed: parseFloat(e.target.value) || 0 })} className="h-8 text-sm bg-black/50" />
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                                                    <Label className="text-brand-blue font-bold text-[10px] uppercase mb-2 block">{scoringMatch.teamB?.name}</Label>
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                        <div className="space-y-1">
-                                                            <span className="text-[10px] text-gray-500 uppercase">Runs</span>
-                                                            <Input type="number" value={scoreUpdates.teamBRuns} onChange={(e) => setScoreUpdates({ ...scoreUpdates, teamBRuns: parseInt(e.target.value) || 0 })} className="h-8 text-sm bg-black/50" />
-                                                        </div>
-                                                        <div className="space-y-1">
-                                                            <span className="text-[10px] text-gray-500 uppercase">Wkts</span>
-                                                            <Input type="number" value={scoreUpdates.teamBWickets} onChange={(e) => setScoreUpdates({ ...scoreUpdates, teamBWickets: parseInt(e.target.value) || 0 })} className="h-8 text-sm bg-black/50" />
-                                                        </div>
-                                                        <div className="space-y-1">
-                                                            <span className="text-[10px] text-gray-500 uppercase">Overs</span>
-                                                            <Input type="number" step="0.1" value={scoreUpdates.teamBOversPlayed} onChange={(e) => setScoreUpdates({ ...scoreUpdates, teamBOversPlayed: parseFloat(e.target.value) || 0 })} className="h-8 text-sm bg-black/50" />
-                                                        </div>
+                                                <div className="pt-4 border-t border-white/5">
+                                                    <div className="flex justify-between items-center mb-4">
+                                                        <span className="text-xs text-gray-400 uppercase font-heading">Current Innings</span>
+                                                        <select
+                                                            className="bg-black/50 border border-white/10 rounded h-8 px-2 text-xs text-white"
+                                                            value={scoreUpdates.currentInnings}
+                                                            onChange={(e) => setScoreUpdates({ ...scoreUpdates, currentInnings: parseInt(e.target.value) })}
+                                                        >
+                                                            <option value={1}>1st Innings</option>
+                                                            <option value={2}>2nd Innings</option>
+                                                        </select>
                                                     </div>
+                                                    <Button className="w-full bg-brand-blue hover:bg-blue-600 h-10 gap-2" onClick={() => saveScoring().catch(console.error)} disabled={updateMatchScoreMutation.isPending || updateMatchStatsMutation.isPending}>
+                                                        {(updateMatchScoreMutation.isPending || updateMatchStatsMutation.isPending) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+                                                        SAVE LIVE SCOREBOARD
+                                                    </Button>
                                                 </div>
-                                            </div>
+                                            </CardContent>
+                                        </Card>
 
-                                            <div className="pt-4 border-t border-white/5">
-                                                <div className="flex justify-between items-center mb-4">
-                                                    <span className="text-xs text-gray-400 uppercase font-heading">Current Innings</span>
+                                        {/* Toss Management */}
+                                        <Card className="glass-card border-brand-yellow/30 mt-6">
+                                            <CardHeader className="pb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="p-1.5 bg-brand-yellow/10 rounded-md text-brand-yellow"><Flag className="w-4 h-4" /></div>
+                                                    <CardTitle className="text-sm font-heading tracking-widest text-brand-yellow uppercase">Toss</CardTitle>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label className="text-xs text-gray-400 uppercase tracking-widest">Toss Won By</Label>
                                                     <select
-                                                        className="bg-black/50 border border-white/10 rounded h-8 px-2 text-xs text-white"
-                                                        value={scoreUpdates.currentInnings}
-                                                        onChange={(e) => setScoreUpdates({ ...scoreUpdates, currentInnings: parseInt(e.target.value) })}
+                                                        id="toss-winner-select"
+                                                        defaultValue={scoringMatch.tossWinner || ''}
+                                                        className="w-full bg-black/50 border border-white/10 rounded-lg h-10 px-3 text-sm text-white focus:border-brand-yellow transition-all appearance-none"
                                                     >
-                                                        <option value={1}>1st Innings</option>
-                                                        <option value={2}>2nd Innings</option>
+                                                        <option value="">Not Conducted</option>
+                                                        <option value={scoringMatch.teamAId}>{scoringMatch.teamA?.name}</option>
+                                                        <option value={scoringMatch.teamBId}>{scoringMatch.teamB?.name}</option>
                                                     </select>
                                                 </div>
-                                                <Button className="w-full bg-brand-blue hover:bg-blue-600 h-10 gap-2" onClick={saveScoring} disabled={updateMatchScoreMutation.isPending || updateMatchStatsMutation.isPending}>
-                                                    {(updateMatchScoreMutation.isPending || updateMatchStatsMutation.isPending) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
-                                                    SAVE LIVE SCOREBOARD
+                                                <div className="space-y-2">
+                                                    <Label className="text-xs text-gray-400 uppercase tracking-widest">Elected To</Label>
+                                                    <select
+                                                        id="toss-decision-select"
+                                                        defaultValue={scoringMatch.tossDecision || ''}
+                                                        className="w-full bg-black/50 border border-white/10 rounded-lg h-10 px-3 text-sm text-white focus:border-brand-yellow transition-all appearance-none"
+                                                    >
+                                                        <option value="">—</option>
+                                                        <option value="bat">Bat First</option>
+                                                        <option value="bowl">Bowl First</option>
+                                                    </select>
+                                                </div>
+                                                <Button
+                                                    className="w-full bg-brand-yellow/90 hover:bg-brand-yellow text-black font-bold h-10 gap-2 uppercase tracking-widest text-xs"
+                                                    onClick={async () => {
+                                                        const tossWinner = (document.getElementById('toss-winner-select') as HTMLSelectElement).value;
+                                                        const tossDecision = (document.getElementById('toss-decision-select') as HTMLSelectElement).value;
+                                                        try {
+                                                            await api.put(`/matches/${scoringMatch.id}`, {
+                                                                tossWinner: tossWinner || null,
+                                                                tossDecision: tossDecision || null,
+                                                            });
+                                                            setScoringMatch({ ...scoringMatch, tossWinner, tossDecision });
+                                                            toast.success('Toss result saved! 🪙');
+                                                        } catch (err: any) {
+                                                            toast.error(err.response?.data?.error || 'Failed to save toss');
+                                                        }
+                                                    }}
+                                                >
+                                                    <Flag className="w-4 h-4" /> SAVE TOSS RESULT
                                                 </Button>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
+                                            </CardContent>
+                                        </Card>
 
-                                    <Card className="glass-card border-brand-blue/30 mt-6">
-                                        <CardHeader className="pb-2">
-                                            <div className="flex items-center gap-2">
-                                                <Camera className="w-4 h-4 text-brand-blue" />
-                                                <CardTitle className="text-sm font-heading tracking-widest text-brand-blue uppercase">Official Scoreboard</CardTitle>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4">
-                                            <div className="relative aspect-video rounded-xl bg-black/50 border border-white/10 flex items-center justify-center overflow-hidden group">
-                                                {scoringMatch?.scoreboardImage ? (
-                                                    <img src={scoringMatch.scoreboardImage} className="w-full h-full object-contain" />
-                                                ) : (
-                                                    <div className="text-center p-4">
-                                                        <Activity className="w-8 h-8 text-gray-700 mx-auto mb-2" />
-                                                        <p className="text-[10px] text-gray-500 uppercase tracking-widest">No scoreboard uploaded</p>
-                                                    </div>
-                                                )}
-                                                <label className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center cursor-pointer transition-opacity backdrop-blur-sm">
-                                                    {uploadingScoreboard ? <Loader2 className="w-6 h-6 animate-spin text-brand-yellow" /> : <Plus className="w-8 h-8 text-white mb-2" />}
-                                                    <span className="text-[10px] font-bold text-white uppercase tracking-widest">Upload Scoreboard</span>
-                                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleScoreboardUpload(e, scoringMatch)} />
-                                                </label>
-                                            </div>
-                                            <p className="text-[9px] text-gray-500 italic text-center uppercase tracking-tighter">Upload a photo of the manual scoreboard or official sheet</p>
-                                        </CardContent>
-                                    </Card>
+                                        <Card className="glass-card border-brand-blue/30 mt-6">
+                                            <CardHeader className="pb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <Camera className="w-4 h-4 text-brand-blue" />
+                                                    <CardTitle className="text-sm font-heading tracking-widest text-brand-blue uppercase">Official Scoreboard</CardTitle>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="space-y-4">
+                                                <div className="relative aspect-video rounded-xl bg-black/50 border border-white/10 flex items-center justify-center overflow-hidden group">
+                                                    {scoringMatch?.scoreboardImage ? (
+                                                        <img src={scoringMatch.scoreboardImage} className="w-full h-full object-contain" />
+                                                    ) : (
+                                                        <div className="text-center p-4">
+                                                            <Activity className="w-8 h-8 text-gray-700 mx-auto mb-2" />
+                                                            <p className="text-[10px] text-gray-500 uppercase tracking-widest">No scoreboard uploaded</p>
+                                                        </div>
+                                                    )}
+                                                    <label className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center cursor-pointer transition-opacity backdrop-blur-sm">
+                                                        {uploadingScoreboard ? <Loader2 className="w-6 h-6 animate-spin text-brand-yellow" /> : <Plus className="w-8 h-8 text-white mb-2" />}
+                                                        <span className="text-[10px] font-bold text-white uppercase tracking-widest">Upload Scoreboard</span>
+                                                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handleScoreboardUpload(e, scoringMatch)} />
+                                                    </label>
+                                                </div>
+                                                <p className="text-[9px] text-gray-500 italic text-center uppercase tracking-tighter">Upload a photo of the manual scoreboard or official sheet</p>
+                                            </CardContent>
+                                        </Card>
 
-                                    <Card className="glass-card border-emerald-500/30">
-                                        <CardHeader className="pb-2">
-                                            <div className="flex items-center gap-2">
-                                                <div className="p-1.5 bg-emerald-500/10 rounded-md text-emerald-500"><Check className="w-4 h-4" /></div>
-                                                <CardTitle className="text-sm font-heading tracking-widest text-emerald-400 uppercase">Match Completion</CardTitle>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4">
-                                            <div className="space-y-2">
-                                                <Label className="text-xs text-gray-400 uppercase">Winner Team</Label>
-                                                <select
-                                                    id="winner-select"
-                                                    className="w-full bg-black/50 border border-white/10 rounded h-10 px-3 text-sm text-white focus:border-emerald-500"
+                                        <Card className="glass-card border-emerald-500/30">
+                                            <CardHeader className="pb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="p-1.5 bg-emerald-500/10 rounded-md text-emerald-500"><Check className="w-4 h-4" /></div>
+                                                    <CardTitle className="text-sm font-heading tracking-widest text-emerald-400 uppercase">Match Completion</CardTitle>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label className="text-xs text-gray-400 uppercase">Winner Team</Label>
+                                                    <select
+                                                        id="winner-select"
+                                                        className="w-full bg-black/50 border border-white/10 rounded h-10 px-3 text-sm text-white focus:border-emerald-500"
+                                                    >
+                                                        <option value="">Select Winner</option>
+                                                        <option value={scoringMatch.teamAId}>{scoringMatch.teamA?.name}</option>
+                                                        <option value={scoringMatch.teamBId}>{scoringMatch.teamB?.name}</option>
+                                                        <option value="no_result">No Result / Draw</option>
+                                                    </select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-xs text-gray-400 uppercase">Man of the Match</Label>
+                                                    <select
+                                                        id="motm-select"
+                                                        className="w-full bg-black/50 border border-white/10 rounded h-10 px-3 text-sm text-white focus:border-brand-yellow"
+                                                    >
+                                                        <option value="">Select MVP</option>
+                                                        {matchPlayerStatsData.map(p => (
+                                                            <option key={p.playerId} value={p.playerId}>{p.playerName}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <Button
+                                                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-bold h-12 gap-2 mt-4"
+                                                    onClick={() => {
+                                                        const winnerId = (document.getElementById('winner-select') as HTMLSelectElement).value;
+                                                        const motmId = (document.getElementById('motm-select') as HTMLSelectElement).value;
+                                                        finalizeMatch(winnerId, motmId);
+                                                    }}
+                                                    disabled={completeMatchMutation.isPending}
                                                 >
-                                                    <option value="">Select Winner</option>
-                                                    <option value={scoringMatch.teamAId}>{scoringMatch.teamA?.name}</option>
-                                                    <option value={scoringMatch.teamBId}>{scoringMatch.teamB?.name}</option>
-                                                    <option value="no_result">No Result / Draw</option>
-                                                </select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-xs text-gray-400 uppercase">Man of the Match</Label>
-                                                <select
-                                                    id="motm-select"
-                                                    className="w-full bg-black/50 border border-white/10 rounded h-10 px-3 text-sm text-white focus:border-brand-yellow"
-                                                >
-                                                    <option value="">Select MVP</option>
-                                                    {matchPlayerStatsData.map(p => (
-                                                        <option key={p.playerId} value={p.playerId}>{p.playerName}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <Button
-                                                className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-bold h-12 gap-2 mt-4"
-                                                onClick={() => {
-                                                    const winnerId = (document.getElementById('winner-select') as HTMLSelectElement).value;
-                                                    const motmId = (document.getElementById('motm-select') as HTMLSelectElement).value;
-                                                    finalizeMatch(winnerId, motmId);
-                                                }}
-                                                disabled={completeMatchMutation.isPending}
+                                                    {completeMatchMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Star className="w-4 h-4" />}
+                                                    FINALIZE MATCH RESULT
+                                                </Button>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+
+                                    {/* Player Stats Detailed Sheet */}
+                                    <div className="lg:col-span-2 space-y-6">
+                                        <div className="bg-black/40 p-1.5 rounded-lg border border-white/10 flex gap-1 mb-4">
+                                            <button
+                                                className="flex-1 py-2 text-xs font-heading tracking-widest uppercase rounded-md bg-brand-yellow text-black"
                                             >
-                                                {completeMatchMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Star className="w-4 h-4" />}
-                                                FINALIZE MATCH RESULT
-                                            </Button>
-                                        </CardContent>
-                                    </Card>
-                                </div>
+                                                Individual Player Stats
+                                            </button>
+                                        </div>
 
-                                {/* Player Stats Detailed Sheet */}
-                                <div className="lg:col-span-2 space-y-6">
-                                    <div className="bg-black/40 p-1.5 rounded-lg border border-white/10 flex gap-1 mb-4">
-                                        <button
-                                            className="flex-1 py-2 text-xs font-heading tracking-widest uppercase rounded-md bg-brand-yellow text-black"
-                                        >
-                                            Individual Player Stats
-                                        </button>
-                                    </div>
-
-                                    <div className="overflow-x-auto rounded-xl border border-white/10 custom-scrollbar">
-                                        <table className="w-full text-left border-collapse">
-                                            <thead>
-                                                <tr className="bg-black/60 border-b border-white/10 text-[10px] uppercase font-heading text-gray-500 tracking-tighter">
-                                                    <th className="px-4 py-3 min-w-[150px]">Player</th>
-                                                    <th className="px-2 py-3">Runs</th>
-                                                    <th className="px-2 py-3">Balls</th>
-                                                    <th className="px-2 py-3">4s</th>
-                                                    <th className="px-2 py-3 bg-brand-red/10">Wkts</th>
-                                                    <th className="px-2 py-3">Conc.</th>
-                                                    <th className="px-2 py-3">Bowled</th>
-                                                    <th className="px-2 py-3">Ctch</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-white/5">
-                                                {matchPlayerStatsData.map((player) => (
-                                                    <tr key={player.playerId} className="hover:bg-white/5 transition-colors">
-                                                        <td className="px-4 py-3">
-                                                            <div className="flex items-center gap-2">
-                                                                <div className={`w-2 h-2 rounded-full ${player.teamId === scoringMatch.teamAId ? 'bg-brand-yellow' : 'bg-brand-blue'}`} />
-                                                                <div>
-                                                                    <div className="text-white text-xs font-bold leading-none">{player.playerName}</div>
-                                                                    <div className="text-[9px] text-gray-500 uppercase tracking-tighter mt-1">{player.teamId === scoringMatch.teamAId ? scoringMatch.teamA?.shortName : scoringMatch.teamB?.shortName}</div>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-2 py-3"><Input type="number" value={player.runsScored} onChange={(e) => handlePlayerStatChange(player.playerId, 'runsScored', parseInt(e.target.value) || 0)} className="w-12 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
-                                                        <td className="px-2 py-3"><Input type="number" value={player.ballsFaced} onChange={(e) => handlePlayerStatChange(player.playerId, 'ballsFaced', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
-                                                        <td className="px-2 py-3"><Input type="number" value={player.fours} onChange={(e) => handlePlayerStatChange(player.playerId, 'fours', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
-
-                                                        <td className="px-2 py-3 bg-brand-red/5"><Input type="number" value={player.wickets} onChange={(e) => handlePlayerStatChange(player.playerId, 'wickets', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-red-900/20 border-white/5 p-1 text-brand-red font-bold" /></td>
-                                                        <td className="px-2 py-3"><Input type="number" value={player.runsConceded} onChange={(e) => handlePlayerStatChange(player.playerId, 'runsConceded', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
-                                                        <td className="px-2 py-3"><Input type="number" value={player.ballsBowled} onChange={(e) => handlePlayerStatChange(player.playerId, 'ballsBowled', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
-                                                        <td className="px-2 py-3"><Input type="number" value={player.catches} onChange={(e) => handlePlayerStatChange(player.playerId, 'catches', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
+                                        <div className="overflow-x-auto rounded-xl border border-white/10 custom-scrollbar">
+                                            <table className="w-full text-left border-collapse">
+                                                <thead>
+                                                    <tr className="bg-black/60 border-b border-white/10 text-[10px] uppercase font-heading text-gray-500 tracking-tighter">
+                                                        <th className="px-4 py-3 min-w-[150px]">Player</th>
+                                                        <th className="px-2 py-3">Runs</th>
+                                                        <th className="px-2 py-3">Balls</th>
+                                                        <th className="px-2 py-3">4s</th>
+                                                        <th className="px-2 py-3 bg-brand-red/10">Wkts</th>
+                                                        <th className="px-2 py-3">Conc.</th>
+                                                        <th className="px-2 py-3">Bowled</th>
+                                                        <th className="px-2 py-3">Ctch</th>
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div className="flex justify-end pt-4">
-                                        <Button
-                                            className="bg-brand-yellow text-black hover:bg-yellow-500 font-bold h-11 px-8 gap-2"
-                                            onClick={() => updateMatchStatsMutation.mutate({ matchId: scoringMatch.id, stats: matchPlayerStatsData })}
-                                            disabled={updateMatchStatsMutation.isPending}
-                                        >
-                                            <Database className="w-4 h-4" />
-                                            UPDATE PLAYER STATS
-                                        </Button>
+                                                </thead>
+                                                <tbody className="divide-y divide-white/5">
+                                                    {matchPlayerStatsData.map((player) => (
+                                                        <tr key={player.playerId} className="hover:bg-white/5 transition-colors">
+                                                            <td className="px-4 py-3">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className={`w-2 h-2 rounded-full ${player.teamId === scoringMatch.teamAId ? 'bg-brand-yellow' : 'bg-brand-blue'}`} />
+                                                                    <div>
+                                                                        <div className="text-white text-xs font-bold leading-none">{player.playerName}</div>
+                                                                        <div className="text-[9px] text-gray-500 uppercase tracking-tighter mt-1">{player.teamId === scoringMatch.teamAId ? scoringMatch.teamA?.shortName : scoringMatch.teamB?.shortName}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-2 py-3"><Input type="number" value={player.runsScored} onChange={(e) => handlePlayerStatChange(player.playerId, 'runsScored', parseInt(e.target.value) || 0)} className="w-12 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
+                                                            <td className="px-2 py-3"><Input type="number" value={player.ballsFaced} onChange={(e) => handlePlayerStatChange(player.playerId, 'ballsFaced', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
+                                                            <td className="px-2 py-3"><Input type="number" value={player.fours} onChange={(e) => handlePlayerStatChange(player.playerId, 'fours', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
+
+                                                            <td className="px-2 py-3 bg-brand-red/5"><Input type="number" value={player.wickets} onChange={(e) => handlePlayerStatChange(player.playerId, 'wickets', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-red-900/20 border-white/5 p-1 text-brand-red font-bold" /></td>
+                                                            <td className="px-2 py-3"><Input type="number" value={player.runsConceded} onChange={(e) => handlePlayerStatChange(player.playerId, 'runsConceded', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
+                                                            <td className="px-2 py-3"><Input type="number" value={player.ballsBowled} onChange={(e) => handlePlayerStatChange(player.playerId, 'ballsBowled', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
+                                                            <td className="px-2 py-3"><Input type="number" value={player.catches} onChange={(e) => handlePlayerStatChange(player.playerId, 'catches', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div className="flex justify-end pt-4 gap-4">
+                                            <Button
+                                                variant="outline"
+                                                className="border-brand-yellow text-brand-yellow hover:bg-brand-yellow/10 font-bold h-11 px-6 gap-2"
+                                                onClick={() => sendReminderMutation.mutate(scoringMatch.id)}
+                                                disabled={sendReminderMutation.isPending}
+                                            >
+                                                {sendReminderMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
+                                                SEND REMINDER
+                                            </Button>
+                                            <Button
+                                                className="bg-brand-yellow text-black hover:bg-yellow-500 font-bold h-11 px-8 gap-2"
+                                                onClick={() => updateMatchStatsMutation.mutate({ matchId: scoringMatch.id, stats: matchPlayerStatsData })}
+                                                disabled={updateMatchStatsMutation.isPending}
+                                            >
+                                                <Database className="w-4 h-4" />
+                                                UPDATE PLAYER STATS
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </motion.div>
                     </motion.div>
                 )}

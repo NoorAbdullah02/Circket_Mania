@@ -21,13 +21,15 @@ export default function Navbar() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                     <div className="flex items-center">
-                        <Link to="/" className="flex-shrink-0" onClick={() => setIsMenuOpen(false)}>
-                            <span className="neon-text-yellow text-2xl font-heading tracking-widest">
-                                CRICKET<span className="text-white font-light">MANIA</span>
+                        <Link to="/" className="flex-shrink-0 group" onClick={() => setIsMenuOpen(false)}>
+                            <span className="text-2xl font-heading tracking-widest flex items-center gap-1.5">
+                                <span className="text-brand-yellow drop-shadow-[0_0_10px_rgba(255,214,10,0.4)]">ICE</span>
+                                <span className="text-white font-light group-hover:text-brand-blue transition-colors">CRICKET</span>
+                                <span className="bg-brand-red text-black text-[10px] font-black px-1.5 py-0.5 rounded-md italic shadow-[0_0_15px_rgba(255,59,48,0.3)] transform -rotate-12 -translate-y-2 group-hover:rotate-0 transition-transform">S2</span>
                             </span>
                         </Link>
 
-                        <div className="hidden md:block">
+                        <div className="hidden lg:block">
                             <div className="ml-10 flex items-baseline space-x-4">
                                 <Link to="/matches" className="text-gray-300 hover:text-white px-3 py-2 rounded-md font-medium transition-colors">Matches</Link>
                                 <Link to="/points-table" className="text-gray-300 hover:text-white px-3 py-2 rounded-md font-medium transition-colors">Points Table</Link>
@@ -35,40 +37,40 @@ export default function Navbar() {
                         </div>
                     </div>
 
-                    <div className="hidden md:block">
-                        <div className="ml-4 flex items-center md:ml-6 space-x-4">
+                    <div className="hidden lg:block">
+                        <div className="ml-4 flex items-center lg:ml-6 space-x-4">
                             {isAuthenticated ? (
                                 <>
                                     <Link to={user?.role === 'admin' ? '/admin' : '/dashboard'}>
-                                        <Button variant="outline" className="gap-2">
-                                            <User className="w-4 h-4" />
+                                        <Button variant="outline" className="gap-2 border-white/10 h-9 text-xs">
+                                            <User className="w-3.5 h-3.5" />
                                             {user?.role === 'admin' ? 'Admin Panel' : 'My Dashboard'}
                                         </Button>
                                     </Link>
-                                    <Button variant="ghost" onClick={handleLogout} className="gap-2 text-gray-300 hover:text-white">
-                                        <LogOut className="w-4 h-4" />
+                                    <Button variant="ghost" onClick={handleLogout} className="gap-2 text-gray-400 hover:text-white h-9 text-xs">
+                                        <LogOut className="w-3.5 h-3.5" />
                                         Logout
                                     </Button>
                                 </>
                             ) : (
                                 <>
                                     <Link to="/login">
-                                        <Button variant="ghost" className="text-gray-300 hover:text-white">Sign In</Button>
+                                        <Button variant="ghost" className="text-gray-300 hover:text-white h-9 text-xs">Sign In</Button>
                                     </Link>
                                     <Link to="/register">
-                                        <Button>Register</Button>
+                                        <Button className="h-9 text-xs px-6">Register</Button>
                                     </Link>
                                 </>
                             )}
                         </div>
                     </div>
 
-                    <div className="-mr-2 flex md:hidden">
+                    <div className="-mr-2 flex lg:hidden">
                         <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            className="text-white"
+                            className="text-white hover:bg-white/10"
                         >
                             {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
                         </Button>
@@ -83,7 +85,7 @@ export default function Navbar() {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="md:hidden glass-panel border-t border-white/10 rounded-none overflow-hidden bg-brand-bg/95 backdrop-blur-xl"
+                        className="lg:hidden glass-panel border-t border-white/10 rounded-none overflow-hidden bg-brand-bg/95 backdrop-blur-xl"
                     >
                         <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
                             <Link

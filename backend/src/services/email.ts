@@ -209,3 +209,75 @@ export function forgotPasswordEmail(userName: string, resetLink: string): EmailP
     `,
   };
 }
+
+export function matchResultsEmail(playerName: string, teamA: string, teamB: string, winner: string, teamAScore: string, teamBScore: string, motm: string): EmailParams {
+  return {
+    to: '',
+    toName: playerName,
+    subject: `🏏 Match Results: ${teamA} vs ${teamB} - ICE Cricket Mania`,
+    htmlContent: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; color: #fff; padding: 40px; border-radius: 16px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #facc15; font-size: 28px;">🏏 ICE Cricket Mania</h1>
+          </div>
+          <h2 style="color: #22c55e; text-align: center;">🏁 Match Completed!</h2>
+          <div style="background: #111827; padding: 24px; border-radius: 12px; margin: 20px 0; border: 2px solid #334155; text-align: center;">
+            <p style="color: #94a3b8; font-size: 14px; margin-bottom: 10px;">FINAL OUTCOME</p>
+            <p style="color: #facc15; font-size: 24px; font-weight: bold; margin: 0;">🏆 ${winner} WON!</p>
+            <hr style="border: 0; border-top: 1px solid #1e293b; margin: 20px 0;" />
+            <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
+              <div style="flex: 1;">
+                <p style="color: #38bdf8; font-size: 14px; margin: 0;">${teamA}</p>
+                <p style="color: #fff; font-size: 20px; font-weight: bold; margin: 5px 0;">${teamAScore}</p>
+              </div>
+              <div style="color: #64748b; font-size: 12px;">VS</div>
+              <div style="flex: 1;">
+                <p style="color: #38bdf8; font-size: 14px; margin: 0;">${teamB}</p>
+                <p style="color: #fff; font-size: 20px; font-weight: bold; margin: 5px 0;">${teamBScore}</p>
+              </div>
+            </div>
+          </div>
+          <div style="background: linear-gradient(135deg, #1e293b, #0f172a); padding: 20px; border-radius: 12px; margin: 20px 0; text-align: center; border: 1px solid #38bdf8;">
+            <p style="color: #38bdf8; font-size: 14px; margin-bottom: 5px;">🌟 MAN OF THE MATCH</p>
+            <p style="color: #fff; font-size: 24px; font-weight: bold; margin: 0;">${motm}</p>
+          </div>
+          <p style="color: #94a3b8; font-size: 14px; text-align: center; margin-top: 30px;">Great game! Check more details on the website. 🏆</p>
+          <hr style="border: 1px solid #1e293b; margin: 30px 0;" />
+          <p style="color: #64748b; font-size: 12px; text-align: center;">ICE Cricket Mania – Season 2</p>
+        </div>
+      `,
+  };
+}
+
+export function preMatchReminderEmail(playerName: string, teamA: string, teamB: string, date: string, time: string, venue: string, isMatchDay: boolean = false): EmailParams {
+  const title = isMatchDay ? "🚨 IT'S MATCH DAY!" : "📅 TOMORROW IS MATCH DAY!";
+  const body = isMatchDay ? "Today is your big game! Get ready boys, it's time to shine on the field!" : "Tomorrow is your big game! Prepare yourselves and get enough rest. Let's go boys!";
+
+  return {
+    to: '',
+    toName: playerName,
+    subject: `${isMatchDay ? '‼️ MATCH DAY' : '📅 Match Reminder'}: ${teamA} vs ${teamB} - ICE Cricket Mania`,
+    htmlContent: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; color: #fff; padding: 40px; border-radius: 16px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #facc15; font-size: 28px;">🏏 ICE Cricket Mania</h1>
+          </div>
+          <h2 style="color: #38bdf8; text-align: center;">${title}</h2>
+          <p style="color: #e2e8f0; line-height: 1.8; font-size: 18px; text-align: center; font-weight: bold;">
+            ${body}
+          </p>
+          <div style="background: #111827; padding: 24px; border-radius: 12px; margin: 30px 0; border-left: 4px solid #facc15;">
+            <p style="color: #facc15; font-size: 20px; font-weight: bold; margin-bottom: 15px;">${teamA} vs ${teamB}</p>
+            <p style="color: #cbd5e1; margin: 5px 0;">📅 <strong>Date:</strong> ${date}</p>
+            <p style="color: #cbd5e1; margin: 5px 0;">🕐 <strong>Time:</strong> ${time}</p>
+            <p style="color: #cbd5e1; margin: 5px 0;">📍 <strong>Venue:</strong> ${venue}</p>
+          </div>
+          <div style="text-align: center; margin: 40px 0;">
+             <p style="color: #facc15; font-size: 24px; font-style: italic; font-weight: bold;">"Victory awaits the bold!" 🔥</p>
+          </div>
+          <hr style="border: 1px solid #1e293b; margin: 30px 0;" />
+          <p style="color: #64748b; font-size: 12px; text-align: center;">ICE Cricket Mania – Season 2</p>
+        </div>
+      `,
+  };
+}

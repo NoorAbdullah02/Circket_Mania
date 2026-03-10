@@ -1,14 +1,17 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Loader2, Shield, Users, Calendar, Trophy, ArrowRight } from 'lucide-react';
+import { Loader2, Shield, Users, Calendar, Trophy, ArrowRight, Star, Target } from 'lucide-react';
 import api from '../api/client';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 
 export default function TeamDetails() {
     const { id } = useParams<{ id: string }>();
+    const container = useRef<HTMLDivElement>(null);
 
     const { data: team, isLoading } = useQuery({
         queryKey: ['team', id],
@@ -28,112 +31,152 @@ export default function TeamDetails() {
         enabled: !!id,
     });
 
+    useGSAP(() => {
+        if (team) {
+            const tl = gsap.timeline({ defaults: { ease: 'power3.out', duration: 1 } });
+            tl.from('.team-header', { y: 30, opacity: 0, scale: 0.98 })
+                .from('.team-stat', { scale: 0.5, opacity: 0, stagger: 0.1 }, '-=0.5')
+                .from('.squad-card', { x: -30, opacity: 0 }, '-=0.5')
+                .from('.match-sidebar', { x: 30, opacity: 0 }, '-=1')
+                .from('.player-row', { opacity: 0, x: -10, stagger: 0.05, duration: 0.5 }, '-=0.5');
+        }
+    }, { dependencies: [team], scope: container });
+
     if (isLoading) {
         return (
             <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-                <Loader2 className="w-10 h-10 text-brand-blue animate-spin" />
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="w-12 h-12 text-brand-blue animate-spin" />
+                    <span className="text-[10px] font-black tracking-[0.4em] text-gray-500 uppercase">Loading Franchise Intel</span>
+                </div>
             </div>
         );
     }
 
     if (!team) {
-        return <div className="text-center text-red-500 p-8">Team not found</div>;
+        return (
+            <div className="flex h-[calc(100vh-4rem)] flex-col items-center justify-center text-center px-4">
+                <Shield className="w-20 h-20 text-brand-red opacity-20 mb-6" />
+                <h2 className="text-2xl font-heading tracking-widest text-white uppercase">Franchise Not Found</h2>
+                <Link to="/" className="mt-6 text-brand-blue hover:text-white transition-colors font-bold uppercase text-[10px] tracking-[0.3em]">Return to Stadium</Link>
+            </div>
+        );
     }
 
     const completedMatches = matches?.filter((m: any) => m.status === 'completed') || [];
     const upcomingMatches = matches?.filter((m: any) => m.status === 'upcoming' || m.status === 'live') || [];
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative" ref={container}>
+            {/* Ambient Background */}
+            <div className="absolute top-0 right-0 -z-10 w-[600px] h-[600px] opacity-10 rounded-full blur-[160px]" style={{ backgroundColor: team.color || '#38BDF8' }} />
+
             {/* Team Header */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="relative overflow-hidden rounded-2xl mb-10"
-            >
-                <div className="absolute inset-0 opacity-20" style={{ backgroundColor: team.color || '#38BDF8' }} />
-                <div className="absolute inset-0 bg-gradient-to-r from-brand-bg via-transparent to-brand-bg" />
-                <div className="relative flex flex-col md:flex-row items-center gap-8 p-8 md:p-12">
-                    <div className="relative">
-                        <div className="absolute -inset-2 rounded-full blur-lg opacity-50" style={{ backgroundColor: team.color }} />
-                        <img
-                            src={team.logo || `https://ui-avatars.com/api/?name=${team.name}&background=random&size=200`}
-                            alt={team.name}
-                            className="relative w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-white/20 shadow-xl"
-                        />
+            <div className="relative overflow-hidden rounded-[3rem] mb-12 glass-card border-none team-header">
+                <div className="absolute inset-0 opacity-10" style={{ backgroundColor: team.color || '#38BDF8' }} />
+                <div className="absolute inset-0 bg-gradient-to-br from-brand-bg/80 via-transparent to-brand-bg/80" />
+
+                <div className="relative flex flex-col md:flex-row items-center gap-12 p-10 md:p-16">
+                    <div className="relative group">
+                        <div className="absolute -inset-6 rounded-full blur-3xl opacity-30 group-hover:opacity-50 transition-opacity duration-1000" style={{ backgroundColor: team.color }} />
+                        <div className="relative w-40 h-40 md:w-52 md:h-52 rounded-full p-1 bg-gradient-to-br from-white/20 to-transparent">
+                            <img
+                                src={team.logo || `https://ui-avatars.com/api/?name=${team.name}&background=random&size=200`}
+                                alt={team.name}
+                                className="w-full h-full rounded-full object-cover border-4 border-brand-bg shadow-2xl relative z-10"
+                            />
+                        </div>
+                        <div className="absolute -bottom-2 -right-2 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest text-white uppercase shadow-xl z-20">
+                            EST. 2024
+                        </div>
                     </div>
+
                     <div className="text-center md:text-left flex-1">
-                        <h1 className="text-4xl md:text-6xl font-heading tracking-widest text-white uppercase">
+                        <div className="flex items-center gap-4 mb-4 justify-center md:justify-start">
+                            <span className="text-brand-yellow font-black text-2xl tracking-[0.3em] uppercase drop-shadow-[0_0_10px_rgba(255,214,10,0.3)]">{team.shortName}</span>
+                            <div className="w-px h-6 bg-white/20" />
+                            <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full shadow-[0_0_10px_currentColor]" style={{ backgroundColor: team.color }} />
+                                <span className="text-gray-400 text-[10px] font-bold tracking-widest uppercase">{team.color}</span>
+                            </div>
+                        </div>
+
+                        <h1 className="text-5xl md:text-8xl font-heading tracking-tighter text-white uppercase leading-none mb-8">
                             {team.name}
                         </h1>
-                        <div className="flex items-center gap-4 mt-3 justify-center md:justify-start">
-                            <span className="text-brand-yellow font-bold text-xl tracking-widest uppercase">{team.shortName}</span>
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: team.color }} />
-                            <span className="text-gray-400 text-sm">{team.color}</span>
-                        </div>
-                        <div className="flex items-center gap-6 mt-6 justify-center md:justify-start">
-                            <div className="glass-panel px-4 py-2 rounded-lg text-center">
-                                <div className="text-2xl font-heading text-brand-blue">{team.players?.length || 0}</div>
-                                <div className="text-[10px] text-gray-400 uppercase tracking-widest">Players</div>
-                            </div>
-                            <div className="glass-panel px-4 py-2 rounded-lg text-center">
-                                <div className="text-2xl font-heading text-emerald-400">{completedMatches.length}</div>
-                                <div className="text-[10px] text-gray-400 uppercase tracking-widest">Played</div>
-                            </div>
-                            <div className="glass-panel px-4 py-2 rounded-lg text-center">
-                                <div className="text-2xl font-heading text-brand-yellow">{upcomingMatches.length}</div>
-                                <div className="text-[10px] text-gray-400 uppercase tracking-widest">Upcoming</div>
-                            </div>
+
+                        <div className="flex flex-wrap items-center gap-6 justify-center md:justify-start">
+                            {[
+                                { label: 'Active Roster', value: team.players?.length || 0, color: 'text-brand-blue', icon: Users },
+                                { label: 'Battles Won', value: completedMatches.filter((m: any) => m.winnerTeamId === id).length, color: 'text-emerald-400', icon: Trophy },
+                                { label: 'Upcoming', value: upcomingMatches.length, color: 'text-brand-yellow', icon: Calendar },
+                            ].map((stat, i) => (
+                                <div key={stat.label} className="team-stat glass-panel px-6 py-3 rounded-2xl flex items-center gap-4 border-white/5 hover:border-white/10 transition-colors group">
+                                    <div className={`p-2 rounded-lg bg-white/5 ${stat.color} group-hover:scale-110 transition-transform`}>
+                                        <stat.icon className="w-4 h-4" />
+                                    </div>
+                                    <div className="text-left">
+                                        <div className={`text-2xl font-black font-heading leading-none ${stat.color}`}>{stat.value}</div>
+                                        <div className="text-[9px] text-gray-500 uppercase tracking-widest font-bold mt-1">{stat.label}</div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
-            </motion.div>
+            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                 {/* Squad Section */}
-                <div className="lg:col-span-2">
-                    <Card className="glass-card">
-                        <CardHeader className="border-b border-white/10">
-                            <CardTitle className="font-heading tracking-widest flex items-center gap-2">
-                                <Users className="w-5 h-5 text-brand-blue" />
-                                Squad
+                <div className="lg:col-span-2 squad-card">
+                    <Card className="glass-card border-white/5 overflow-hidden">
+                        <CardHeader className="border-b border-white/5 px-8 py-6 bg-white/[0.02]">
+                            <CardTitle className="font-heading tracking-[0.2em] flex items-center gap-4 text-sm uppercase text-brand-blue">
+                                <div className="w-10 h-10 rounded-xl bg-brand-blue/10 flex items-center justify-center">
+                                    <Users className="w-5 h-5" />
+                                </div>
+                                Franchise Squad
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
                             {team.players?.length === 0 ? (
-                                <div className="text-center text-gray-500 py-12">No players assigned yet</div>
+                                <div className="text-center py-20 bg-black/20">
+                                    <Users className="w-12 h-12 text-gray-700 mx-auto mb-4 opacity-20" />
+                                    <p className="text-gray-500 uppercase text-[10px] tracking-widest font-bold">Roster synchronization pending</p>
+                                </div>
                             ) : (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-0">
                                     {team.players?.map((player: any, i: number) => (
                                         <Link
                                             to={`/player/${player.id}`}
                                             key={player.id}
-                                            className="flex items-center gap-4 p-5 border-b border-white/5 hover:bg-white/5 transition-colors group"
+                                            className="player-row flex items-center gap-5 p-6 border-b border-r border-white/5 hover:bg-white/[0.03] transition-all group"
                                         >
                                             <div className="relative">
+                                                <div className="absolute -inset-1 bg-brand-blue/20 rounded-full blur opacity-0 group-hover:opacity-100 transition-opacity" />
                                                 <img
                                                     src={player.profileImage || `https://ui-avatars.com/api/?name=${player.name}&background=random`}
                                                     alt={player.name}
-                                                    className="w-14 h-14 rounded-full object-cover border-2 border-white/10 group-hover:border-brand-blue/50 transition-colors"
+                                                    className="w-16 h-16 rounded-full object-cover border-2 border-white/10 group-hover:border-brand-blue/40 transition-all duration-500 relative z-10"
                                                 />
                                                 {player.isCaptain && (
-                                                    <div className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-brand-yellow text-black rounded-full flex items-center justify-center text-[10px] font-black">C</div>
+                                                    <div className="absolute -top-1 -right-1 w-7 h-7 bg-brand-yellow text-black rounded-lg flex items-center justify-center text-[10px] font-black z-20 shadow-lg rotate-12 border-2 border-brand-bg uppercase">C</div>
                                                 )}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <div className="text-white font-medium truncate">{player.name}</div>
-                                                <div className="flex items-center gap-2 mt-0.5">
-                                                    <span className="text-xs text-brand-blue font-bold uppercase">{player.role || 'Undecided'}</span>
+                                                <div className="text-white font-bold text-lg tracking-tight group-hover:text-brand-blue transition-colors truncate">{player.name}</div>
+                                                <div className="flex items-center gap-3 mt-1">
+                                                    <span className="text-[10px] text-brand-blue font-black uppercase tracking-widest">{player.role || 'PLAYER'}</span>
                                                     {player.jerseyNumber && (
-                                                        <span className="text-xs text-gray-500">#{player.jerseyNumber}</span>
+                                                        <span className="text-[10px] text-gray-500 font-bold">#{player.jerseyNumber}</span>
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className="text-right hidden sm:block">
-                                                <div className="text-sm text-white">{player.totalRuns || 0} <span className="text-[10px] text-gray-500">runs</span></div>
-                                                <div className="text-sm text-white">{player.totalWickets || 0} <span className="text-[10px] text-gray-500">wkts</span></div>
+                                            <div className="text-right hidden sm:block opacity-60 group-hover:opacity-100 transition-opacity">
+                                                <div className="text-xs text-white font-heading tracking-wider">{player.totalRuns || 0} <span className="text-[9px] text-gray-500 uppercase">RUNS</span></div>
+                                                <div className="text-xs text-white font-heading tracking-wider">{player.totalWickets || 0} <span className="text-[9px] text-gray-500 uppercase">WKTS</span></div>
                                             </div>
-                                            <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-brand-blue transition-colors" />
+                                            <ArrowRight className="w-4 h-4 text-gray-700 group-hover:text-brand-blue group-hover:translate-x-1 transition-all" />
                                         </Link>
                                     ))}
                                 </div>
@@ -142,36 +185,39 @@ export default function TeamDetails() {
                     </Card>
                 </div>
 
-                {/* Match History Section */}
-                <div className="space-y-6">
-                    {/* Upcoming Matches */}
-                    <Card className="glass-card">
-                        <CardHeader className="border-b border-white/10">
-                            <CardTitle className="font-heading tracking-widest text-sm flex items-center gap-2 uppercase">
-                                <Calendar className="w-4 h-4 text-brand-blue" />
-                                Upcoming Matches
+                {/* Match Sidebars */}
+                <div className="space-y-8 match-sidebar">
+                    {/* Live/Upcoming Matches */}
+                    <Card className="glass-card border-brand-blue/10 bg-brand-blue/[0.02]">
+                        <CardHeader className="border-b border-white/5 px-6 py-5">
+                            <CardTitle className="font-heading tracking-[0.2em] text-[11px] flex items-center gap-3 uppercase text-brand-blue">
+                                <Calendar className="w-4 h-4" />
+                                Next Engagements
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
                             {upcomingMatches.length === 0 ? (
-                                <div className="text-center text-gray-500 py-8 text-sm">No upcoming matches</div>
+                                <div className="text-center py-10">
+                                    <p className="text-[10px] text-gray-600 uppercase tracking-widest font-bold font-heading">No Scheduled Battles</p>
+                                </div>
                             ) : (
                                 upcomingMatches.map((match: any) => {
                                     const opponent = match.teamA?.id === id ? match.teamB : match.teamA;
                                     return (
-                                        <Link key={match.id} to={`/matches/${match.id}`} className="flex items-center gap-3 p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
+                                        <Link key={match.id} to={`/matches/${match.id}`} className="flex items-center gap-4 p-5 border-b border-white/5 hover:bg-brand-blue/5 transition-all group">
                                             <img
                                                 src={opponent?.logo || `https://ui-avatars.com/api/?name=${opponent?.name}&background=random`}
-                                                className="w-9 h-9 rounded-full object-cover border border-white/10"
+                                                className="w-10 h-10 rounded-full object-cover border border-white/10 group-hover:scale-110 transition-transform"
                                                 alt={opponent?.name}
                                             />
                                             <div className="flex-1 min-w-0">
-                                                <div className="text-white text-sm font-medium truncate">vs {opponent?.name}</div>
-                                                <div className="text-[10px] text-gray-500">{match.date} • {match.time}</div>
+                                                <div className="text-white text-xs font-black uppercase tracking-widest truncate group-hover:text-brand-blue transition-colors">vs {opponent?.shortName || opponent?.name}</div>
+                                                <div className="text-[9px] text-gray-500 font-bold mt-1 uppercase tracking-tighter">{match.date} • {match.venue}</div>
                                             </div>
                                             {match.status === 'live' && (
-                                                <span className="text-[10px] text-brand-red bg-red-500/10 px-2 py-0.5 rounded-full font-bold uppercase animate-pulse">LIVE</span>
+                                                <span className="text-[9px] text-brand-red bg-brand-red/10 border border-brand-red/20 px-2 py-1 rounded-sm font-black uppercase tracking-widest animate-pulse">LIVE</span>
                                             )}
+                                            <ArrowRight className="w-3 h-3 text-gray-700 group-hover:text-brand-blue transition-colors" />
                                         </Link>
                                     );
                                 })
@@ -179,17 +225,19 @@ export default function TeamDetails() {
                         </CardContent>
                     </Card>
 
-                    {/* Completed Matches */}
-                    <Card className="glass-card">
-                        <CardHeader className="border-b border-white/10">
-                            <CardTitle className="font-heading tracking-widest text-sm flex items-center gap-2 uppercase">
-                                <Trophy className="w-4 h-4 text-brand-yellow" />
-                                Results
+                    {/* Results Section */}
+                    <Card className="glass-card border-brand-yellow/10">
+                        <CardHeader className="border-b border-white/5 px-6 py-5">
+                            <CardTitle className="font-heading tracking-[0.2em] text-[11px] flex items-center gap-3 uppercase text-brand-yellow">
+                                <Trophy className="w-4 h-4" />
+                                Tactical Results
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
                             {completedMatches.length === 0 ? (
-                                <div className="text-center text-gray-500 py-8 text-sm">No completed matches yet</div>
+                                <div className="text-center py-10">
+                                    <p className="text-[10px] text-gray-600 uppercase tracking-widest font-bold font-heading">No Records Found</p>
+                                </div>
                             ) : (
                                 completedMatches.map((match: any) => {
                                     const opponent = match.teamA?.id === id ? match.teamB : match.teamA;
@@ -202,23 +250,21 @@ export default function TeamDetails() {
                                     const won = match.winnerTeamId === id;
 
                                     return (
-                                        <Link key={match.id} to={`/matches/${match.id}`} className="flex items-center gap-3 p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                                            <div className={`w-2 h-2 rounded-full ${won ? 'bg-emerald-400' : 'bg-brand-red'}`} />
-                                            <img
-                                                src={opponent?.logo || `https://ui-avatars.com/api/?name=${opponent?.name}&background=random`}
-                                                className="w-8 h-8 rounded-full object-cover border border-white/10"
-                                                alt={opponent?.name}
-                                            />
+                                        <Link key={match.id} to={`/matches/${match.id}`} className="flex items-center gap-4 p-5 border-b border-white/5 hover:bg-white/[0.03] transition-all group">
+                                            <div className={`w-1.5 h-8 rounded-full ${won ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-brand-red shadow-[0_0_10px_rgba(239,68,68,0.3)]'}`} />
                                             <div className="flex-1 min-w-0">
-                                                <div className="text-white text-sm truncate">vs {opponent?.name}</div>
-                                                <div className="text-[10px] text-gray-500">{match.date}</div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{match.date}</span>
+                                                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${won ? 'bg-emerald-500/10 text-emerald-400' : 'bg-brand-red/10 text-brand-red'}`}>{won ? 'Victoire' : 'Défaite'}</span>
+                                                </div>
+                                                <div className="text-white text-xs font-black uppercase tracking-wider group-hover:text-brand-yellow transition-colors truncate">vs {opponent?.shortName || opponent?.name}</div>
                                             </div>
                                             <div className="text-right">
-                                                <div className={`text-sm font-bold ${won ? 'text-emerald-400' : 'text-brand-red'}`}>
-                                                    {ourRuns}/{ourWickets} — {oppRuns}/{oppWickets}
+                                                <div className={`text-sm font-black font-heading ${won ? 'text-emerald-400' : 'text-brand-red'}`}>
+                                                    {ourRuns}/{ourWickets}
                                                 </div>
-                                                <div className={`text-[10px] font-bold uppercase ${won ? 'text-emerald-400' : 'text-brand-red'}`}>
-                                                    {won ? 'Won' : 'Lost'}
+                                                <div className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">
+                                                    Target {oppRuns}
                                                 </div>
                                             </div>
                                         </Link>
@@ -232,3 +278,4 @@ export default function TeamDetails() {
         </div>
     );
 }
+

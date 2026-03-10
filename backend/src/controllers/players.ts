@@ -37,9 +37,21 @@ export async function getAllPlayers(req: Request, res: Response): Promise<void> 
                 totalBallsBowled: players.totalBallsBowled,
                 totalRunsConceded: players.totalRunsConceded,
                 createdAt: players.createdAt,
+                team: sql`
+                    CASE WHEN ${teams.id} IS NOT NULL THEN
+                        json_build_object(
+                            'id', ${teams.id},
+                            'name', ${teams.name},
+                            'shortName', ${teams.shortName},
+                            'logo', ${teams.logo},
+                            'color', ${teams.color}
+                        )
+                    ELSE NULL END
+                `.as('team')
             })
             .from(players)
-            .innerJoin(users, eq(players.userId, users.id));
+            .innerJoin(users, eq(players.userId, users.id))
+            .leftJoin(teams, eq(players.teamId, teams.id));
 
         const conditions: any[] = [];
 

@@ -3,7 +3,7 @@ import { eq, and, or, desc } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { matches, scores, teams, players, users, pointsTable, tournamentSettings, commentary, matchPlayerStats } from '../db/schema.js';
 import { createMatchSchema, updateMatchSchema, updateScoreSchema, autoGenerateMatchesSchema, addCommentarySchema } from '../schemas/validation.js';
-import { sendEmail, matchScheduledEmail, finalMatchEmail } from '../services/email.js';
+import { sendEmail, matchScheduledEmail, finalMatchEmail, matchResultsEmail, preMatchReminderEmail } from '../services/email.js';
 
 export async function createMatch(req: Request, res: Response): Promise<void> {
     try {
@@ -399,7 +399,8 @@ export async function updateScore(req: Request, res: Response): Promise<void> {
 
         res.json({ message: 'Score updated', score });
     } catch (error) {
-        res.status(500).json({ error: 'Failed to update score' });
+        console.error('Update score error:', error);
+        res.status(500).json({ error: 'Failed to update score', details: (error as Error).message });
     }
 }
 
@@ -530,6 +531,46 @@ export async function completeMatch(req: Request, res: Response): Promise<void> 
 
         await recalculatePointsTable();
 
+        // Send results email to all players from both teams
+        try {
+            const [teamA] = await db.select().from(teams).where(eq(teams.id, match.teamAId)).limit(1);
+            const [teamB] = await db.select().from(teams).where(eq(teams.id, match.teamBId)).limit(1);
+            const [winnerTeam] = winnerTeamId ? await db.select().from(teams).where(eq(teams.id, winnerTeamId)).limit(1) : [null];
+            const [score] = await db.select().from(scores).where(eq(scores.matchId, id)).limit(1);
+
+            let motmName = 'N/A';
+            if (manOfTheMatch) {
+                const [p] = await db.select().from(players).where(eq(players.id, manOfTheMatch)).limit(1);
+                if (p) {
+                    const [u] = await db.select().from(users).where(eq(users.id, p.userId)).limit(1);
+                    motmName = u?.name || 'N/A';
+                }
+            }
+
+            const teamAPlayers = await db.select({ userId: players.userId }).from(players).where(eq(players.teamId, match.teamAId));
+            const teamBPlayers = await db.select({ userId: players.userId }).from(players).where(eq(players.teamId, match.teamBId));
+            const allPlayerUserIds = [...teamAPlayers, ...teamBPlayers].map(p => p.userId);
+
+            for (const uid of allPlayerUserIds) {
+                const [user] = await db.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, uid)).limit(1);
+                if (user) {
+                    const emailData = matchResultsEmail(
+                        user.name,
+                        teamA?.name || 'Team A',
+                        teamB?.name || 'Team B',
+                        winnerTeam?.name || 'Completed',
+                        `${score?.teamARuns || 0}/${score?.teamAWickets || 0}`,
+                        `${score?.teamBRuns || 0}/${score?.teamBWickets || 0}`,
+                        motmName
+                    );
+                    emailData.to = user.email;
+                    await sendEmail(emailData);
+                }
+            }
+        } catch (emailErr) {
+            console.error('Failed to send match completion emails:', emailErr);
+        }
+
         res.json({ message: 'Match completed and points table updated' });
     } catch (error) {
         console.error('Complete match error:', error);
@@ -587,6 +628,27 @@ export async function autoGenerateMatches(req: Request, res: Response): Promise<
 
             await db.insert(scores).values({ matchId: match.id });
             createdMatches.push(match);
+
+            // Send notification emails
+            try {
+                const [teamA] = allTeams.filter(t => t.id === match.teamAId);
+                const [teamB] = allTeams.filter(t => t.id === match.teamBId);
+
+                const teamAPlayers = await db.select({ userId: players.userId }).from(players).where(eq(players.teamId, teamA.id));
+                const teamBPlayers = await db.select({ userId: players.userId }).from(players).where(eq(players.teamId, teamB.id));
+                const playerUserIds = [...teamAPlayers, ...teamBPlayers].map(p => p.userId);
+
+                for (const uid of playerUserIds) {
+                    const [user] = await db.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, uid)).limit(1);
+                    if (user) {
+                        const emailData = matchScheduledEmail(user.name, teamA.name, teamB.name, match.date, match.time, match.venue);
+                        emailData.to = user.email;
+                        await sendEmail(emailData);
+                    }
+                }
+            } catch (emailErr) {
+                console.error('Failed to send auto-generate match emails:', emailErr);
+            }
         }
 
         res.json({
@@ -596,6 +658,115 @@ export async function autoGenerateMatches(req: Request, res: Response): Promise<
     } catch (error) {
         console.error('Auto generate error:', error);
         res.status(500).json({ error: 'Failed to auto-generate matches' });
+    }
+}
+
+export async function sendMatchReminders(req: Request, res: Response): Promise<void> {
+    try {
+        const id = req.params.id as string;
+        const [match] = await db.select().from(matches).where(eq(matches.id, id)).limit(1);
+
+        if (!match) {
+            res.status(404).json({ error: 'Match not found' });
+            return;
+        }
+
+        const [teamA] = await db.select().from(teams).where(eq(teams.id, match.teamAId)).limit(1);
+        const [teamB] = await db.select().from(teams).where(eq(teams.id, match.teamBId)).limit(1);
+
+        if (!teamA || !teamB) {
+            res.status(404).json({ error: 'Teams not found' });
+            return;
+        }
+
+        const teamAPlayers = await db.select({ userId: players.userId }).from(players).where(eq(players.teamId, teamA.id));
+        const teamBPlayers = await db.select({ userId: players.userId }).from(players).where(eq(players.teamId, teamB.id));
+        const playerUserIds = [...teamAPlayers, ...teamBPlayers].map(p => p.userId);
+
+        // Determine reminder type from date logic
+        const matchDate = new Date(match.date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        matchDate.setHours(0, 0, 0, 0);
+
+        const diffTime = matchDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        const isMatchDay = diffDays === 0;
+
+        for (const uid of playerUserIds) {
+            const [user] = await db.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, uid)).limit(1);
+            if (user) {
+                const emailData = preMatchReminderEmail(
+                    user.name,
+                    teamA.name,
+                    teamB.name,
+                    match.date,
+                    match.time,
+                    match.venue,
+                    isMatchDay
+                );
+                emailData.to = user.email;
+                await sendEmail(emailData);
+            }
+        }
+
+        res.json({ message: `Reminders sent for ${isMatchDay ? 'Match Day' : 'Tomorrow'}` });
+    } catch (error) {
+        console.error('Send reminder error:', error);
+        res.status(500).json({ error: 'Failed to send reminders' });
+    }
+}
+
+export async function sendMatchResultsManual(req: Request, res: Response): Promise<void> {
+    try {
+        const id = req.params.id as string;
+        const [match] = await db.select().from(matches).where(eq(matches.id, id)).limit(1);
+
+        if (!match) {
+            res.status(404).json({ error: 'Match not found' });
+            return;
+        }
+
+        const [teamA] = await db.select().from(teams).where(eq(teams.id, match.teamAId)).limit(1);
+        const [teamB] = await db.select().from(teams).where(eq(teams.id, match.teamBId)).limit(1);
+        const [winnerTeam] = match.winnerTeamId ? await db.select().from(teams).where(eq(teams.id, match.winnerTeamId)).limit(1) : [null];
+        const [score] = await db.select().from(scores).where(eq(scores.matchId, id)).limit(1);
+
+        let motmName = 'N/A';
+        if (match.manOfTheMatch) {
+            const [p] = await db.select().from(players).where(eq(players.id, match.manOfTheMatch)).limit(1);
+            if (p) {
+                const [u] = await db.select().from(users).where(eq(users.id, p.userId)).limit(1);
+                motmName = u?.name || 'N/A';
+            }
+        }
+
+        const teamAPlayers = await db.select({ userId: players.userId }).from(players).where(eq(players.teamId, match.teamAId));
+        const teamBPlayers = await db.select({ userId: players.userId }).from(players).where(eq(players.teamId, match.teamBId));
+        const allPlayerUserIds = [...teamAPlayers, ...teamBPlayers].map(p => p.userId);
+
+        for (const uid of allPlayerUserIds) {
+            const [user] = await db.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, uid)).limit(1);
+            if (user) {
+                const emailData = matchResultsEmail(
+                    user.name,
+                    teamA?.name || 'Team A',
+                    teamB?.name || 'Team B',
+                    winnerTeam?.name || 'Completed',
+                    `${score?.teamARuns || 0}/${score?.teamAWickets || 0}`,
+                    `${score?.teamBRuns || 0}/${score?.teamBWickets || 0}`,
+                    motmName
+                );
+                emailData.to = user.email;
+                await sendEmail(emailData);
+            }
+        }
+
+        res.json({ message: 'Results email sent to all players' });
+    } catch (error) {
+        console.error('Send manual results error:', error);
+        res.status(500).json({ error: 'Failed to send results' });
     }
 }
 
@@ -893,7 +1064,19 @@ export async function updateMatchPlayerStats(req: Request, res: Response): Promi
             }
 
             if (inserts.length > 0) {
-                await db.insert(matchPlayerStats).values(inserts);
+                try {
+                    await db.insert(matchPlayerStats).values(inserts);
+                } catch (insertError: any) {
+                    console.error('[updateMatchPlayerStats] Batch insert failed, trying one-by-one:', insertError.message);
+                    // Fallback: try inserting one by one
+                    for (const ins of inserts) {
+                        try {
+                            await db.insert(matchPlayerStats).values(ins);
+                        } catch (singleError: any) {
+                            console.warn(`[updateMatchPlayerStats] Skipping player ${ins.playerId}:`, singleError.message);
+                        }
+                    }
+                }
             }
 
             // Recompute total stats for all players involved

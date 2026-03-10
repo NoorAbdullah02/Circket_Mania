@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import api from '../api/client';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { formatTime12h } from '../lib/utils';
 
 export default function MatchDetails() {
     const { id } = useParams();
@@ -60,7 +61,7 @@ export default function MatchDetails() {
                             <div className="flex justify-between items-center mb-6">
                                 <div>
                                     <span className="text-brand-blue/80 font-heading tracking-widest text-sm uppercase">{match.matchType} Match</span>
-                                    <p className="text-gray-400 text-xs mt-1">{match.venue} • {match.date}</p>
+                                    <p className="text-gray-400 text-xs mt-1">{match.venue} • {match.date} • {formatTime12h(match.time)}</p>
                                 </div>
                                 {match.status === 'live' && <span className="text-red-500 font-bold uppercase tracking-widest text-xs animate-pulse bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20">Live</span>}
                             </div>
@@ -97,7 +98,11 @@ export default function MatchDetails() {
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
                                 <div className="bg-black/40 p-4 rounded-xl border border-white/5">
                                     <p className="text-gray-400 text-sm mb-1">Toss</p>
-                                    <p className="font-heading text-white tracking-wide">{match.tossWinner ? match.tossWinner + ' chose to ' + match.tossDecision : 'Not conducted'}</p>
+                                    <p className="font-heading text-white tracking-wide">
+                                        {match.tossWinner
+                                            ? `${match.tossWinner === tA?.id ? tA?.name : tB?.name} elected to ${match.tossDecision === 'bat' ? 'bat first' : 'bowl first'}`
+                                            : 'Not conducted'}
+                                    </p>
                                 </div>
                                 <div className="bg-black/40 p-4 rounded-xl border border-white/5">
                                     <p className="text-gray-400 text-sm mb-1">Man of the Match</p>

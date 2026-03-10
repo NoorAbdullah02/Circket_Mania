@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Loader2, Shield, Trophy, Target, Crosshair, Activity } from 'lucide-react';
+import { Loader2, Shield, Trophy, Target, Crosshair, Activity, Star } from 'lucide-react';
 import api from '../api/client';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 
 export default function PlayerProfile() {
     const { id } = useParams<{ id: string }>();
+    const container = useRef<HTMLDivElement>(null);
 
     const { data: player, isLoading } = useQuery({
         queryKey: ['player-profile', id],
@@ -18,24 +21,39 @@ export default function PlayerProfile() {
         enabled: !!id,
     });
 
+    useGSAP(() => {
+        if (player) {
+            const tl = gsap.timeline({ defaults: { ease: 'power3.out', duration: 1 } });
+            tl.from('.profile-header', { scale: 0.9, opacity: 0, duration: 1.2 })
+                .from('.stat-card', { y: 30, opacity: 0, stagger: 0.1, duration: 0.8 }, '-=0.8')
+                .from('.detail-card', { x: (i) => i % 2 === 0 ? -30 : 30, opacity: 0, duration: 1 }, '-=0.5');
+        }
+    }, { dependencies: [player], scope: container });
+
     if (isLoading) {
         return (
             <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-                <Loader2 className="w-10 h-10 text-brand-blue animate-spin" />
+                <Loader2 className="w-12 h-12 text-brand-blue animate-spin" />
             </div>
         );
     }
 
     if (!player) {
-        return <div className="text-center text-red-500 p-8">Player not found</div>;
+        return (
+            <div className="flex h-[calc(100vh-4rem)] flex-col items-center justify-center text-gray-500">
+                <Shield className="w-16 h-16 mb-4 opacity-20" />
+                <h2 className="text-xl font-heading tracking-widest uppercase">Player not found</h2>
+                <Link to="/" className="mt-4 text-brand-blue hover:text-white transition-colors uppercase text-xs tracking-widest font-bold">Return to Stadium</Link>
+            </div>
+        );
     }
 
     const stats = [
-        { label: 'Matches', value: player.matchesPlayed || 0, color: 'text-brand-blue' },
-        { label: 'Runs', value: player.totalRuns || 0, color: 'text-brand-yellow' },
-        { label: 'Wickets', value: player.totalWickets || 0, color: 'text-emerald-400' },
-        { label: 'Fours', value: player.totalFours || 0, color: 'text-white' },
-        { label: 'Catches', value: player.totalCatches || 0, color: 'text-purple-400' },
+        { label: 'Matches', value: player.matchesPlayed || 0, color: 'text-brand-blue', icon: Activity },
+        { label: 'Runs', value: player.totalRuns || 0, color: 'text-brand-yellow', icon: Trophy },
+        { label: 'Wickets', value: player.totalWickets || 0, color: 'text-brand-red', icon: Crosshair },
+        { label: 'Fours', value: player.totalFours || 0, color: 'text-white', icon: Star },
+        { label: 'Catches', value: player.totalCatches || 0, color: 'text-purple-400', icon: Target },
     ];
 
     const battingAvg = player.matchesPlayed > 0 ? (player.totalRuns / player.matchesPlayed).toFixed(1) : '0.0';
@@ -44,121 +62,143 @@ export default function PlayerProfile() {
     const economyRate = player.totalBallsBowled > 0 ? ((player.totalRunsConceded / (player.totalBallsBowled / 6))).toFixed(2) : '-';
 
     return (
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative" ref={container}>
+            {/* Background Accents */}
+            <div className="absolute top-0 right-0 -z-10 w-96 h-96 bg-brand-blue/5 rounded-full blur-[120px]" />
+            <div className="absolute bottom-0 left-0 -z-10 w-96 h-96 bg-brand-red/5 rounded-full blur-[120px]" />
+
             {/* Player Header */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="relative overflow-hidden rounded-2xl mb-10"
-            >
-                <div className="absolute inset-0 bg-gradient-to-br from-brand-blue/20 via-transparent to-brand-red/20" />
-                <div className="relative flex flex-col md:flex-row items-center gap-8 p-8 md:p-12">
+            <div className="relative overflow-hidden rounded-[2.5rem] mb-12 glass-card border-none profile-header">
+                <div className="absolute inset-0 bg-gradient-to-br from-brand-blue/30 via-transparent to-brand-red/20 opacity-40" />
+                <div className="absolute inset-0 backdrop-blur-[2px]" />
+
+                <div className="relative flex flex-col md:flex-row items-center gap-10 p-10 md:p-16">
                     <div className="relative">
-                        <div className="absolute -inset-2 rounded-full bg-gradient-to-br from-brand-blue to-brand-red blur-lg opacity-40" />
-                        <img
-                            src={player.profileImage || `https://ui-avatars.com/api/?name=${player.name}&background=random&size=200`}
-                            alt={player.name}
-                            className="relative w-36 h-36 md:w-44 md:h-44 rounded-full object-cover border-4 border-white/20 shadow-xl"
-                        />
+                        <div className="absolute -inset-4 rounded-full bg-gradient-to-br from-brand-blue to-brand-red blur-2xl opacity-30 animate-pulse" />
+                        <div className="relative w-40 h-40 md:w-52 md:h-52 rounded-full p-1 bg-gradient-to-br from-white/20 to-transparent">
+                            <img
+                                src={player.profileImage || `https://ui-avatars.com/api/?name=${player.name}&background=random&size=200`}
+                                alt={player.name}
+                                className="w-full h-full rounded-full object-cover border-4 border-brand-bg shadow-2xl relative z-10"
+                            />
+                        </div>
                         {player.isCaptain && (
-                            <div className="absolute bottom-1 right-1 w-8 h-8 bg-brand-yellow text-black rounded-full flex items-center justify-center text-sm font-black z-10">C</div>
+                            <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-brand-yellow text-black rounded-2xl flex items-center justify-center text-lg font-black z-20 shadow-xl rotate-12 border-4 border-brand-bg uppercase">
+                                <Shield className="w-6 h-6" />
+                            </div>
                         )}
                     </div>
+
                     <div className="text-center md:text-left flex-1">
-                        <h1 className="text-4xl md:text-6xl font-heading tracking-widest text-white uppercase neon-text-blue">
-                            {player.name}
-                        </h1>
-                        <div className="flex items-center gap-3 mt-3 justify-center md:justify-start flex-wrap">
-                            <span className="bg-brand-blue/20 text-brand-blue px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border border-brand-blue/30">
-                                {player.role || 'Undecided'}
-                            </span>
-                            <span className="text-gray-400 text-sm">{player.batch} Batch</span>
+                        <div className="flex flex-col md:flex-row md:items-end gap-3 mb-4">
+                            <h1 className="text-5xl md:text-7xl font-heading tracking-widest text-white uppercase neon-text-blue leading-none">
+                                {player.name}
+                            </h1>
                             {player.jerseyNumber && (
-                                <span className="text-brand-yellow font-heading text-xl">#{player.jerseyNumber}</span>
+                                <span className="text-brand-yellow font-heading text-4xl mb-1 opacity-80">#{player.jerseyNumber}</span>
                             )}
                         </div>
+
+                        <div className="flex items-center gap-4 mt-2 justify-center md:justify-start flex-wrap">
+                            <span className="bg-brand-blue/10 text-brand-blue px-5 py-1.5 rounded-full text-xs font-bold uppercase tracking-[0.2em] border border-brand-blue/30 backdrop-blur-md">
+                                {player.role || 'Player'}
+                            </span>
+                            <span className="text-gray-400 text-xs font-bold tracking-widest uppercase bg-white/5 px-4 py-1.5 rounded-full">{player.batch} BATCH</span>
+                            {player.status === 'activated' && (
+                                <span className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-black tracking-widest uppercase">
+                                    <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                                    Active
+                                </span>
+                            )}
+                        </div>
+
                         {player.team && (
-                            <Link to={`/team/${player.team.id}`} className="inline-flex items-center gap-3 mt-4 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl transition-colors border border-white/10">
+                            <Link to={`/team/${player.team.id}`} className="inline-flex items-center gap-4 mt-8 bg-black/40 hover:bg-brand-blue/10 px-6 py-3 rounded-2xl transition-all border border-white/5 hover:border-brand-blue/30 group">
                                 <img
                                     src={player.team.logo || `https://ui-avatars.com/api/?name=${player.team.name}&background=random`}
-                                    className="w-6 h-6 rounded-full object-cover"
+                                    className="w-8 h-8 rounded-full object-cover border border-white/10 group-hover:scale-110 transition-transform"
                                     alt={player.team.name}
                                 />
-                                <span className="text-white font-heading tracking-wider text-sm">{player.team.name}</span>
+                                <div className="text-left">
+                                    <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Member Of</div>
+                                    <div className="text-white font-heading tracking-[0.15em] text-sm uppercase group-hover:text-brand-blue transition-colors">{player.team.name}</div>
+                                </div>
                             </Link>
                         )}
+
                         {player.bio && (
-                            <p className="mt-4 text-gray-400 max-w-lg text-sm font-light">{player.bio}</p>
+                            <p className="mt-8 text-gray-400 max-w-xl text-sm leading-relaxed font-light italic">"{player.bio}"</p>
                         )}
                     </div>
                 </div>
-            </motion.div>
+            </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-4 mb-10">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6 mb-12">
                 {stats.map((stat, i) => (
-                    <motion.div
-                        key={stat.label}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                    >
-                        <Card className="glass-card text-center hover:border-brand-blue/30 transition-all">
-                            <CardContent className="p-4">
-                                <div className={`text-3xl font-heading font-bold ${stat.color}`}>{stat.value}</div>
-                                <div className="text-[10px] text-gray-400 uppercase tracking-widest mt-1">{stat.label}</div>
+                    <div key={stat.label} className="stat-card">
+                        <Card className="glass-card text-center hover:border-brand-blue/40 hover:-translate-y-1 transition-all duration-500 overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-2 opacity-5 scale-150 group-hover:opacity-10 group-hover:scale-125 transition-all">
+                                <stat.icon className="w-12 h-12" />
+                            </div>
+                            <CardContent className="p-6 relative z-10">
+                                <div className={`text-4xl font-heading font-black ${stat.color} drop-shadow-sm`}>{stat.value}</div>
+                                <div className="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-bold mt-2">{stat.label}</div>
                             </CardContent>
                         </Card>
-                    </motion.div>
+                    </div>
                 ))}
             </div>
 
             {/* Detailed Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Batting */}
-                <Card className="glass-card">
-                    <CardHeader className="border-b border-white/10">
-                        <CardTitle className="font-heading tracking-widest flex items-center gap-2 text-sm uppercase">
-                            <Target className="w-4 h-4 text-brand-yellow" />
-                            Batting Stats
+                <Card className="glass-card detail-card hover:border-brand-yellow/30 transition-colors">
+                    <CardHeader className="border-b border-white/5 py-6">
+                        <CardTitle className="font-heading tracking-[0.2em] flex items-center gap-4 text-sm uppercase text-brand-yellow">
+                            <div className="w-8 h-8 rounded-lg bg-brand-yellow/10 flex items-center justify-center">
+                                <Target className="w-4 h-4" />
+                            </div>
+                            Offensive Performance
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="pt-6 space-y-4">
+                    <CardContent className="pt-8 space-y-6">
                         {[
-                            { label: 'Total Runs', value: player.totalRuns || 0 },
-                            { label: 'Balls Faced', value: player.totalBallsFaced || 0 },
-                            { label: 'Batting Average', value: battingAvg },
-                            { label: 'Strike Rate', value: strikeRate },
-                            { label: 'Fours', value: player.totalFours || 0 },
+                            { label: 'Total Runs Scored', value: player.totalRuns || 0, color: 'text-white' },
+                            { label: 'Deliveries Faced', value: player.totalBallsFaced || 0, color: 'text-gray-400' },
+                            { label: 'Batting Average', value: battingAvg, color: 'text-brand-blue' },
+                            { label: 'Strike Efficiency', value: strikeRate, color: 'text-brand-yellow' },
+                            { label: 'Boundary Fours', value: player.totalFours || 0, color: 'text-white' },
                         ].map(stat => (
-                            <div key={stat.label} className="flex justify-between items-center py-2 border-b border-white/5">
-                                <span className="text-gray-400 text-sm">{stat.label}</span>
-                                <span className="text-white font-heading text-lg">{stat.value}</span>
+                            <div key={stat.label} className="flex justify-between items-center group">
+                                <span className="text-gray-500 text-[11px] uppercase tracking-widest font-bold group-hover:text-gray-400 transition-colors">{stat.label}</span>
+                                <span className={`${stat.color} font-heading text-2xl tracking-widest`}>{stat.value}</span>
                             </div>
                         ))}
                     </CardContent>
                 </Card>
 
                 {/* Bowling */}
-                <Card className="glass-card">
-                    <CardHeader className="border-b border-white/10">
-                        <CardTitle className="font-heading tracking-widest flex items-center gap-2 text-sm uppercase">
-                            <Crosshair className="w-4 h-4 text-emerald-400" />
-                            Bowling Stats
+                <Card className="glass-card detail-card hover:border-brand-red/30 transition-colors">
+                    <CardHeader className="border-b border-white/5 py-6">
+                        <CardTitle className="font-heading tracking-[0.2em] flex items-center gap-4 text-sm uppercase text-brand-red">
+                            <div className="w-8 h-8 rounded-lg bg-brand-red/10 flex items-center justify-center">
+                                <Crosshair className="w-4 h-4" />
+                            </div>
+                            Defensive Execution
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="pt-6 space-y-4">
+                    <CardContent className="pt-8 space-y-6">
                         {[
-                            { label: 'Total Wickets', value: player.totalWickets || 0 },
-                            { label: 'Balls Bowled', value: player.totalBallsBowled || 0 },
-                            { label: 'Runs Conceded', value: player.totalRunsConceded || 0 },
-                            { label: 'Bowling Average', value: bowlingAvg },
-                            { label: 'Economy Rate', value: economyRate },
-                            { label: 'Catches', value: player.totalCatches || 0 },
+                            { label: 'Wickets Taken', value: player.totalWickets || 0, color: 'text-white' },
+                            { label: 'Deliveries Bowled', value: player.totalBallsBowled || 0, color: 'text-gray-400' },
+                            { label: 'Economy Rating', value: economyRate, color: 'text-brand-red' },
+                            { label: 'Bowling Average', value: bowlingAvg, color: 'text-brand-blue' },
+                            { label: 'Fielding Catches', value: player.totalCatches || 0, color: 'text-white' },
                         ].map(stat => (
-                            <div key={stat.label} className="flex justify-between items-center py-2 border-b border-white/5">
-                                <span className="text-gray-400 text-sm">{stat.label}</span>
-                                <span className="text-white font-heading text-lg">{stat.value}</span>
+                            <div key={stat.label} className="flex justify-between items-center group">
+                                <span className="text-gray-500 text-[11px] uppercase tracking-widest font-bold group-hover:text-gray-400 transition-colors">{stat.label}</span>
+                                <span className={`${stat.color} font-heading text-2xl tracking-widest`}>{stat.value}</span>
                             </div>
                         ))}
                     </CardContent>
@@ -167,3 +207,4 @@ export default function PlayerProfile() {
         </div>
     );
 }
+

@@ -5,7 +5,7 @@ import {
     updateScore, completeMatch, autoGenerateMatches,
     getPointsTable, addCommentary, getCommentary,
     getDashboardStats, getTournamentSettings, updateTournamentSettings,
-    getMatchPlayerStats, updateMatchPlayerStats
+    getMatchPlayerStats, updateMatchPlayerStats, sendMatchReminders, sendMatchResultsManual
 } from '../controllers/matches.js';
 
 const router = Router();
@@ -21,6 +21,8 @@ router.get('/:matchId/commentary', getCommentary);
 router.post('/', authenticate, adminOnly, createMatch);
 router.post('/auto-generate', authenticate, adminOnly, autoGenerateMatches);
 router.post('/:id/commentary', authenticate, adminOnly, addCommentary);
+router.post('/:id/remind', authenticate, adminOnly, sendMatchReminders);
+router.post('/:id/send-results', authenticate, adminOnly, sendMatchResultsManual);
 
 router.put('/settings', authenticate, adminOnly, updateTournamentSettings);
 router.put('/:id', authenticate, adminOnly, updateMatch);
