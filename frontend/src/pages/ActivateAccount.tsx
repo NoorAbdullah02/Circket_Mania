@@ -78,6 +78,7 @@ export default function ActivateAccount() {
                                     <Input
                                         id="password"
                                         type="password"
+                                        placeholder="••••••••"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         className="pl-10 h-10 w-full"
@@ -92,6 +93,7 @@ export default function ActivateAccount() {
                                     <Input
                                         id="confirmPassword"
                                         type="password"
+                                        placeholder="••••••••"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
                                         className="pl-10 h-10 w-full"

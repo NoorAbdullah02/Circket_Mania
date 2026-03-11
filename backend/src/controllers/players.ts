@@ -243,6 +243,16 @@ export async function adminUpdatePlayer(req: Request, res: Response): Promise<vo
         if (updates.totalRunsConceded !== undefined) playerUpdates.totalRunsConceded = updates.totalRunsConceded;
 
         if (Object.keys(playerUpdates).length > 0) {
+            // If player is being made captain, unset other captains in the same team
+            if (updates.isCaptain === true && player.isCaptain === false) {
+                const teamIdForCaptaincy = updates.teamId || player.teamId;
+                if (teamIdForCaptaincy) {
+                    await db.update(players)
+                        .set({ isCaptain: false })
+                        .where(eq(players.teamId, teamIdForCaptaincy));
+                }
+            }
+
             await db.update(players).set(playerUpdates).where(eq(players.id, id));
 
             // If player became captain, send email

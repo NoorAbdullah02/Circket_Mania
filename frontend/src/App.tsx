@@ -43,24 +43,42 @@ function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: 
 }
 
 function App() {
-    const { setToken, setInitialized, logout } = useAuthStore();
+    const { setAuth, setInitialized, logout, isInitialized } = useAuthStore();
 
     React.useEffect(() => {
         const initAuth = async () => {
+            if (isInitialized) return;
+
             try {
-                const { data } = await api.post('/auth/refresh');
-                setToken(data.accessToken);
+                // Try to refresh the access token using the HTTP-only cookie
+                const { data: refreshData } = await api.post('/auth/refresh');
+                
+                if (refreshData.accessToken) {
+                    try {
+                        // Fetch full details using the NEW token
+                        const { data: userData } = await api.get('/auth/me', {
+                            headers: { Authorization: `Bearer ${refreshData.accessToken}` }
+                        });
+                        setAuth(userData.user, userData.player, refreshData.accessToken);
+                    } catch (meError) {
+                        console.error('[initAuth] Me request failed:', meError);
+                        logout();
+                    }
+                } else {
+                    logout();
+                }
             } catch (error) {
-                // If refresh fails, we might still have a persisted user but no token
-                // We should probably logout if we can't refresh
-                logout(true);
+                // Refresh failed (likely no cookie or session expired)
+                // This is normal for guests, so we just log a small note
+                console.log('[Auth] Guest session');
+                logout();
             } finally {
                 setInitialized(true);
             }
         };
 
         initAuth();
-    }, [setToken, setInitialized, logout]);
+    }, [setAuth, setInitialized, logout, isInitialized]);
 
     return (
         <QueryClientProvider client={queryClient}>

@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Camera, User, Phone, MapPin, Shield, Edit, Check, CheckCircle2 } from 'lucide-react';
@@ -13,7 +14,8 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 
 export default function PlayerDashboard() {
-    const { user, player, setPlayer } = useAuthStore();
+    const navigate = useNavigate();
+    const { user, player, setPlayer, setAuth } = useAuthStore();
     const queryClient = useQueryClient();
     const container = useRef<HTMLDivElement>(null);
     const hasAnimated = useRef(false);
@@ -27,6 +29,23 @@ export default function PlayerDashboard() {
         jerseyNumber: player?.jerseyNumber?.toString() || '',
         bio: player?.bio || '',
     });
+
+    // Sync form data when player data becomes available or status changes
+    // We only sync on mount or when player status changes to avoid resets while typing
+    React.useEffect(() => {
+        if (player) {
+            setFormData(prev => ({
+                ...prev,
+                name: user?.name || prev.name,
+                phone: player.phone || prev.phone,
+                role: player.role || prev.role,
+                battingStyle: player.battingStyle || prev.battingStyle,
+                bowlingStyle: player.bowlingStyle || prev.bowlingStyle,
+                jerseyNumber: player.jerseyNumber?.toString() || prev.jerseyNumber,
+                bio: player.bio || prev.bio,
+            }));
+        }
+    }, [player?.id, player?.status, user?.name]);
 
     const [uploading, setUploading] = useState(false);
 
@@ -52,13 +71,28 @@ export default function PlayerDashboard() {
     });
 
     useGSAP(() => {
-        if (player?.status === 'activated' && !hasAnimated.current) {
-            hasAnimated.current = true;
-            const tl = gsap.timeline({ defaults: { ease: 'power3.out', duration: 1 } });
-            tl.from('.dashboard-header', { y: -20, opacity: 0 })
-                .from('.dashboard-card', { y: 30, opacity: 0, stagger: 0.15 }, '-=0.6');
+        if (player?.status === 'activated') {
+            const tl = gsap.timeline({ defaults: { ease: 'power3.out', duration: 0.8 } });
+            
+            // Check for elements in current scope
+            const cards = container.current?.querySelectorAll('.dashboard-card');
+            
+            if (cards && cards.length > 0 && !hasAnimated.current) {
+                hasAnimated.current = true;
+                tl.fromTo('.dashboard-header', 
+                    { y: -20, opacity: 0 }, 
+                    { y: 0, opacity: 1 }
+                ).fromTo('.dashboard-card', 
+                    { y: 30, opacity: 0 }, 
+                    { y: 0, opacity: 1, stagger: { amount: 0.4 }, duration: 0.6 }, 
+                    '-=0.4'
+                );
+            } else if (cards && cards.length > 0 && hasAnimated.current) {
+                // Ensure they are visible if we've already animated but a re-render happened
+                gsap.set(['.dashboard-header', '.dashboard-card'], { opacity: 1, y: 0 });
+            }
         }
-    }, { dependencies: [player?.status], scope: container });
+    }, { dependencies: [player?.status, loadingTeam], scope: container });
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -90,12 +124,23 @@ export default function PlayerDashboard() {
 
     const verifyTokenMutation = useMutation({
         mutationFn: async (token: string) => api.post('/players/verify-token', { token }),
-        onSuccess: (res) => {
+        onSuccess: async (res) => {
             toast.success(res.data.message || 'Profile Unlocked! 🚀');
-            if (res.data.player) {
-                setPlayer(res.data.player);
+            try {
+                // Fetch the absolute latest state from the server
+                const { data: userData } = await api.get('/auth/me');
+                // Force update the entire auth store to reflect "activated" status globally
+                setAuth(userData.user, userData.player, useAuthStore.getState().accessToken!);
+                
+                // Reset animation flag to allow the reveal animation to run
+                hasAnimated.current = false;
+                queryClient.invalidateQueries();
+            } catch (error) {
+                // If fetching fails, at least use the player data returned from verification
+                if (res.data.player) {
+                    setPlayer(res.data.player);
+                }
             }
-            queryClient.invalidateQueries({ queryKey: ['auth-me'] });
         },
         onError: (err: any) => toast.error(err.response?.data?.error || 'Verification failed')
     });
@@ -195,19 +240,19 @@ export default function PlayerDashboard() {
                         <CardContent className="p-0">
                             <div className="grid grid-cols-2 divide-x divide-y divide-white/5">
                                 <div className="p-5 text-center group hover:bg-white/[0.02] transition-colors">
-                                    <div className="text-2xl font-bold text-white font-heading">{player.totalRuns}</div>
+                                    <div className="text-2xl font-bold text-white font-heading">{player.totalRuns || 0}</div>
                                     <div className="text-[9px] text-gray-500 uppercase tracking-widest font-bold mt-1">Total Runs</div>
                                 </div>
                                 <div className="p-5 text-center group hover:bg-white/[0.02] transition-colors">
-                                    <div className="text-2xl font-bold text-brand-red font-heading">{player.totalWickets}</div>
+                                    <div className="text-2xl font-bold text-brand-red font-heading">{player.totalWickets || 0}</div>
                                     <div className="text-[9px] text-gray-500 uppercase tracking-widest font-bold mt-1">Total Wickets</div>
                                 </div>
                                 <div className="p-5 text-center group hover:bg-white/[0.02] transition-colors">
-                                    <div className="text-2xl font-bold text-brand-blue font-heading">{player.matchesPlayed}</div>
+                                    <div className="text-2xl font-bold text-brand-blue font-heading">{player.matchesPlayed || 0}</div>
                                     <div className="text-[9px] text-gray-500 uppercase tracking-widest font-bold mt-1">Matches</div>
                                 </div>
                                 <div className="p-5 text-center group hover:bg-white/[0.02] transition-colors">
-                                    <div className="text-2xl font-bold text-brand-yellow font-heading">{player.totalFours}</div>
+                                    <div className="text-2xl font-bold text-brand-yellow font-heading">{player.totalFours || 0}</div>
                                     <div className="text-[9px] text-gray-500 uppercase tracking-widest font-bold mt-1">Total Fours</div>
                                 </div>
                             </div>
@@ -285,8 +330,8 @@ export default function PlayerDashboard() {
                         </CardContent>
                     </Card>
 
-                    {/* Team Squad Section for Captain */}
-                    {player.isCaptain && teamInfo?.players && (
+                    {/* Team Squad Section for everyone in team */}
+                    {teamInfo?.players && (
                         <Card className="glass-card dashboard-card">
                             <CardHeader className="border-b border-white/5 flex flex-row items-center justify-between py-6">
                                 <CardTitle className="font-heading tracking-[0.2em] text-xl uppercase text-white">Squad Manifest</CardTitle>
@@ -299,7 +344,8 @@ export default function PlayerDashboard() {
                                     {teamInfo.players.map((p: any) => (
                                         <div
                                             key={p.id}
-                                            className="flex items-center gap-4 p-4 rounded-2xl bg-black/40 border border-white/5 hover:border-brand-blue/30 transition-all group cursor-default"
+                                            onClick={() => navigate(`/player/${p.id}`)}
+                                            className="flex items-center gap-4 p-4 rounded-2xl bg-black/40 border border-white/5 hover:border-brand-blue/30 transition-all group cursor-pointer"
                                         >
                                             <div className="relative">
                                                 <img

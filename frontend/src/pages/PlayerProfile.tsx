@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Loader2, Shield, Trophy, Target, Crosshair, Activity, Star, ArrowRight } from 'lucide-react';
+import { Loader2, Shield, Trophy, Target, Crosshair, Activity, Star, ArrowRight, Zap } from 'lucide-react';
 import api from '../api/client';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import gsap from 'gsap';

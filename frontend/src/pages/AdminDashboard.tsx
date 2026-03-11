@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Shield, Calendar, Loader2, Database, Plus, Search, Edit, Trash2, Camera, Activity, Crown, Check, X, Star, History, User, Award, Zap, Target, Mail, Hash, Flag, Phone, RotateCcw, Trophy, UserMinus, Bell } from 'lucide-react';
@@ -16,6 +17,7 @@ import { formatTime12h } from '../lib/utils';
 const PIE_COLORS = ['#38BDF8', '#FFD60A', '#FF3B30', '#22C55E', '#A855F7', '#EC4899'];
 
 export default function AdminDashboard() {
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('overview');
     const [searchQuery, setSearchQuery] = useState('');
     const container = useRef<HTMLDivElement>(null);
@@ -100,6 +102,7 @@ export default function AdminDashboard() {
     const [editingPlayer, setEditingPlayer] = useState<any>(null);
     const [viewingPlayer, setViewingPlayer] = useState<any>(null);
     const [unassignConfirmation, setUnassignConfirmation] = useState<any>(null);
+    const [isCaptainAssignment, setIsCaptainAssignment] = useState(false);
     const [editingMatch, setEditingMatch] = useState<any>(null);
     const [showMatchForm, setShowMatchForm] = useState(false);
     const [newTeam, setNewTeam] = useState({ name: '', shortName: '', color: '#38BDF8', logo: '', coverPhoto: '' });
@@ -154,11 +157,12 @@ export default function AdminDashboard() {
     });
 
     const assignPlayerMutation = useMutation({
-        mutationFn: async ({ playerId, teamId }: { playerId: string, teamId: string }) =>
-            api.post('/teams/assign-players', { playerIds: [playerId], teamId }),
+        mutationFn: async ({ playerId, teamId, isCaptain }: { playerId: string, teamId: string, isCaptain?: boolean }) =>
+            api.post('/teams/assign-players', { playerIds: [playerId], teamId, isCaptain }),
         onSuccess: () => {
             toast.success('Player assigned and activation email sent! 💌');
             setAssigningPlayer(null);
+            setIsCaptainAssignment(false);
             queryClient.invalidateQueries({ queryKey: ['admin-players'] });
             queryClient.invalidateQueries({ queryKey: ['admin-teams'] });
         },
@@ -881,10 +885,22 @@ export default function AdminDashboard() {
                                                         </div>
                                                         <div>
                                                             <h3 className="text-2xl font-heading tracking-[0.2em] text-white uppercase">Franchise Assignment</h3>
-                                                            <p className="text-gray-400 text-xs uppercase tracking-widest mt-1">Select a destination for <span className="text-brand-blue font-bold">{assigningPlayer.name}</span></p>
+                                                            <div className="flex items-center gap-4 mt-2">
+                                                                <p className="text-gray-400 text-xs uppercase tracking-widest">Select a destination for <span className="text-brand-blue font-bold">{assigningPlayer.name}</span></p>
+                                                                <div className="flex items-center gap-2 bg-brand-blue/10 border border-brand-blue/30 px-3 py-1 rounded-full">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        id="assignAsCaptain"
+                                                                        checked={isCaptainAssignment}
+                                                                        onChange={(e) => setIsCaptainAssignment(e.target.checked)}
+                                                                        className="w-3.5 h-3.5 rounded border-white/10 bg-black/50 text-brand-blue focus:ring-brand-blue"
+                                                                    />
+                                                                    <label htmlFor="assignAsCaptain" className="text-[10px] text-brand-blue font-black uppercase tracking-widest cursor-pointer">Set as Team Captain</label>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    <Button variant="ghost" size="sm" className="h-10 w-10 p-0 rounded-full hover:bg-white/10" onClick={() => setAssigningPlayer(null)}><X className="w-5 h-5" /></Button>
+                                                    <Button variant="ghost" size="sm" className="h-10 w-10 p-0 rounded-full hover:bg-white/10" onClick={() => { setAssigningPlayer(null); setIsCaptainAssignment(false); }}><X className="w-5 h-5" /></Button>
                                                 </div>
 
                                                 <div className="p-8 bg-black/40">
@@ -893,7 +909,7 @@ export default function AdminDashboard() {
                                                             <div
                                                                 key={team.id}
                                                                 className="group relative cursor-pointer"
-                                                                onClick={() => assignPlayerMutation.mutate({ playerId: assigningPlayer.id, teamId: team.id })}
+                                                                onClick={() => assignPlayerMutation.mutate({ playerId: assigningPlayer.id, teamId: team.id, isCaptain: isCaptainAssignment })}
                                                             >
                                                                 <div className="absolute -inset-1 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-2xl group-hover:via-white/20 transition duration-500"></div>
                                                                 <Card className="relative h-full bg-black/60 border border-white/10 hover:border-white/30 p-6 transition-all duration-300 transform group-hover:-translate-y-2 flex flex-col items-center text-center">
@@ -978,7 +994,10 @@ export default function AdminDashboard() {
                                                             </div>
                                                             <div>
                                                                 <div className="text-white font-bold tracking-wider flex items-center gap-2 text-sm">
-                                                                    {player.name}
+                                                                    <Link to={`/player/${player.id}`} className="hover:text-brand-blue transition-colors">
+                                                                        {player.name}
+                                                                    </Link>
+                                                                    {player.isCaptain && <Award className="w-3.5 h-3.5 text-brand-blue drop-shadow-[0_0_8px_rgba(56,189,248,0.8)]" title="Team Captain" />}
                                                                     {player.userRole === 'admin' && <Crown className="w-3.5 h-3.5 text-brand-yellow drop-shadow-[0_0_8px_rgba(255,214,10,0.8)]" />}
                                                                 </div>
                                                                 <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">{player.email}</div>
@@ -1514,14 +1533,27 @@ export default function AdminDashboard() {
                         >
                             {/* Modal Header/Profile Head */}
                             <div className="relative h-40 bg-gradient-to-br from-brand-blue/20 to-brand-yellow/20 p-6 flex items-end">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="absolute top-4 right-4 text-white hover:bg-white/10"
-                                    onClick={() => setViewingPlayer(null)}
-                                >
-                                    <X className="w-5 h-5" />
-                                </Button>
+                                    <div className="absolute top-4 right-4 flex items-center gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-9 px-4 bg-brand-blue text-black border-none hover:bg-brand-blue/80 font-bold uppercase tracking-widest text-[10px] rounded-xl flex items-center gap-2 shadow-lg"
+                                            onClick={() => {
+                                                setViewingPlayer(null);
+                                                navigate(`/player/${viewingPlayer.id}`);
+                                            }}
+                                        >
+                                            <Trophy className="w-3 h-3" /> View Public Profile
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-9 w-9 p-0 text-white hover:bg-white/10 rounded-full"
+                                            onClick={() => setViewingPlayer(null)}
+                                        >
+                                            <X className="w-5 h-5" />
+                                        </Button>
+                                    </div>
 
                                 <div className="flex gap-6 items-end">
                                     <div className="w-24 h-24 rounded-2xl bg-black border-[3px] border-white/20 overflow-hidden shadow-2xl translate-y-8">

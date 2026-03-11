@@ -178,12 +178,19 @@ export async function assignPlayersToTeam(req: Request, res: Response): Promise<
             return;
         }
 
-        const { playerIds, teamId } = parsed.data;
+        const { playerIds, teamId, isCaptain } = parsed.data;
 
         const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
         if (!team) {
             res.status(404).json({ error: 'Team not found' });
             return;
+        }
+
+        // If assigning as captain, first unset any existing captain for this team
+        if (isCaptain) {
+            await db.update(players)
+                .set({ isCaptain: false })
+                .where(eq(players.teamId, teamId));
         }
 
         for (const playerId of playerIds) {
@@ -194,7 +201,7 @@ export async function assignPlayersToTeam(req: Request, res: Response): Promise<
 
             // Store teamToken in player record
             await db.update(players)
-                .set({ teamId, status: 'selected', teamToken })
+                .set({ teamId, status: 'selected', teamToken, isCaptain: isCaptain || false })
                 .where(eq(players.id, playerId));
 
             const [user] = await db.select().from(users).where(eq(users.id, player.userId)).limit(1);
@@ -208,6 +215,11 @@ export async function assignPlayersToTeam(req: Request, res: Response): Promise<
 
             const activationLink = `${FRONTEND_URL}/activate?token=${activationToken}`;
             const emailData = playerSelectedEmail(user.name, team.name, activationLink, teamToken);
+            
+            if (isCaptain) {
+                emailData.subject = `🏏 Team Captain Selection - ${team.name}`;
+            }
+            
             emailData.to = user.email;
 
             console.log(`[AssignPlayer] Sending activation email to ${user.email} with token ${teamToken}`);

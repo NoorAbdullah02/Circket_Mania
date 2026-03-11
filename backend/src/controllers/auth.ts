@@ -178,10 +178,18 @@ export async function refreshAccessToken(req: Request, res: Response): Promise<v
         }
 
         const payload = verifyRefreshToken(refreshToken);
+        
+        // Verify user still exists and is active
+        const [user] = await db.select().from(users).where(eq(users.id, payload.userId)).limit(1);
+        if (!user || !user.isActive) {
+            res.status(401).json({ error: 'User no longer exists or is inactive' });
+            return;
+        }
+
         const newAccessToken = generateAccessToken({
-            userId: payload.userId,
-            email: payload.email,
-            role: payload.role,
+            userId: user.id,
+            email: user.email,
+            role: user.role,
         });
 
         res.json({ accessToken: newAccessToken });
@@ -200,6 +208,7 @@ export async function getMe(req: Request, res: Response): Promise<void> {
 
         const [user] = await db.select().from(users).where(eq(users.id, req.user.userId)).limit(1);
         if (!user) {
+            console.warn(`[getMe] User not found for ID: ${req.user.userId}`);
             res.status(404).json({ error: 'User not found' });
             return;
         }

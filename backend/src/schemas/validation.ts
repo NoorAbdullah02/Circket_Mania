@@ -40,6 +40,7 @@ export const createTeamSchema = z.object({
 export const assignPlayersSchema = z.object({
     playerIds: z.array(z.string().uuid()).min(1, 'At least one player is required'),
     teamId: z.string().uuid('Invalid team ID'),
+    isCaptain: z.boolean().optional(),
 });
 
 export const setCaptainSchema = z.object({
