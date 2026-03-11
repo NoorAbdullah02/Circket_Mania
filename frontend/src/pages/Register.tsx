@@ -112,10 +112,12 @@ export default function Register() {
     }
 
     return (
-        <div className="min-h-[calc(100vh-4rem)] py-20 px-4 flex flex-col items-center justify-center relative overflow-hidden" ref={container}>
-            {/* Background elements */}
-            <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] bg-brand-red/5 rounded-full blur-[100px] pointer-events-none"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] bg-brand-yellow/5 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="min-h-[calc(100vh-4rem)] px-4 flex flex-col items-center justify-start pt-10 pb-20 relative" ref={container}>
+            {/* Background elements wrapped to prevent page overflow issues */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] bg-brand-red/5 rounded-full blur-[100px]"></div>
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] bg-brand-yellow/5 rounded-full blur-[100px]"></div>
+            </div>
 
             <div className="absolute top-10 left-10 hidden lg:block">
                 <Link to="/" className="flex items-center gap-2 text-gray-400 hover:text-brand-red transition-colors uppercase tracking-widest font-bold text-xs reg-element">

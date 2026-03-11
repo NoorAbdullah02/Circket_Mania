@@ -69,7 +69,7 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-4" ref={container}>
+        <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-start pt-10 pb-20 p-4" ref={container}>
             <div className="absolute top-10 left-10 hidden lg:block">
                 <Link to="/" className="flex items-center gap-2 text-gray-400 hover:text-brand-blue transition-colors uppercase tracking-widest font-bold text-xs login-element">
                     <ArrowLeft className="w-4 h-4" /> Back to Stadium
