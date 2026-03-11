@@ -37,7 +37,7 @@ export default function Home() {
                 ease: 'expo.out'
             }, '-=1.2')
             .from('.hero-desc', { y: 20, opacity: 0 }, '-=1')
-            .from('.hero-btns', { y: 20, opacity: 0, stagger: 0.1 }, '-=0.8')
+            .from('.hero-btns', { y: 20, scale: 0.9, duration: 1 }, '-=0.8')
             .from('.hero-bg-accent', { scale: 0, opacity: 0, duration: 2 }, 0);
 
         // Continuous float animation for icons

@@ -25,8 +25,8 @@ export default function Matches() {
     useGSAP(() => {
         if (matches) {
             const tl = gsap.timeline({ defaults: { ease: 'power3.out', duration: 1 } });
-            tl.from('.matches-header', { y: -30, opacity: 0 })
-                .from('.match-card', { y: 50, opacity: 0, stagger: 0.1, duration: 0.8 }, '-=0.6');
+            tl.from('.matches-header', { y: -20, scale: 0.98 })
+                .from('.match-card', { y: 30, stagger: 0.08, duration: 0.8 }, '-=0.6');
         }
     }, { dependencies: [matches], scope: container });
 

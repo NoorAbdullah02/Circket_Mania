@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { Button } from '../ui/button';
-import { User, LogOut, Menu, X } from 'lucide-react';
+import { User, LogOut, Menu, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Navbar() {
-    const { isAuthenticated, user, logout } = useAuthStore();
+    const { isAuthenticated, user, logout, isInitialized } = useAuthStore();
     const navigate = useNavigate();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -38,8 +38,12 @@ export default function Navbar() {
                     </div>
 
                     <div className="hidden lg:block">
-                        <div className="ml-4 flex items-center lg:ml-6 space-x-4">
-                            {isAuthenticated ? (
+                        <div className="ml-4 flex items-center lg:ml-6 space-x-4 min-w-[140px] justify-end">
+                            {!isInitialized ? (
+                                <div className="h-9 w-9 flex items-center justify-center">
+                                    <Loader2 className="w-4 h-4 animate-spin text-gray-500/50" />
+                                </div>
+                            ) : isAuthenticated ? (
                                 <>
                                     <Link to={user?.role === 'admin' ? '/admin' : '/dashboard'}>
                                         <Button variant="outline" className="gap-2 border-white/10 h-9 text-xs">
@@ -104,7 +108,11 @@ export default function Navbar() {
                             </Link>
 
                             <div className="pt-4 pb-3 flex flex-col space-y-3 px-3">
-                                {isAuthenticated ? (
+                                {!isInitialized ? (
+                                    <div className="flex justify-center py-4">
+                                        <Loader2 className="w-6 h-6 animate-spin text-gray-500/50" />
+                                    </div>
+                                ) : isAuthenticated ? (
                                     <>
                                         <Link
                                             to={user?.role === 'admin' ? '/admin' : '/dashboard'}

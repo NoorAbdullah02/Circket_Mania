@@ -33,8 +33,8 @@ export default function Register() {
         if (hasAnimated.current) return;
         hasAnimated.current = true;
         const tl = gsap.timeline({ defaults: { ease: 'power4.out', duration: 1 } });
-        tl.from('.reg-card', { y: 60, opacity: 0, scale: 0.9, duration: 1.2 })
-            .from('.reg-element', { y: 20, opacity: 0, stagger: 0.05 }, '-=0.8');
+        tl.from('.reg-card', { y: 40, scale: 0.95, duration: 1.2 })
+            .from('.reg-element', { y: 15, stagger: 0.05, ease: 'power3.out' }, '-=0.8');
     }, { scope: container });
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

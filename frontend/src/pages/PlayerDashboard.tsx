@@ -79,12 +79,10 @@ export default function PlayerDashboard() {
             
             if (cards && cards.length > 0 && !hasAnimated.current) {
                 hasAnimated.current = true;
-                tl.fromTo('.dashboard-header', 
-                    { y: -20, opacity: 0 }, 
-                    { y: 0, opacity: 1 }
-                ).fromTo('.dashboard-card', 
-                    { y: 30, opacity: 0 }, 
-                    { y: 0, opacity: 1, stagger: { amount: 0.4 }, duration: 0.6 }, 
+                tl.from('.dashboard-header', 
+                    { y: -20, scale: 0.98 }
+                ).from('.dashboard-card', 
+                    { y: 20, scale: 0.98, stagger: { amount: 0.3 } }, 
                     '-=0.4'
                 );
             } else if (cards && cards.length > 0 && hasAnimated.current) {

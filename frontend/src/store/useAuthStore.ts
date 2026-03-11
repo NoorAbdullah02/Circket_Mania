@@ -38,7 +38,7 @@ export const useAuthStore = create<AuthState>()(
         }),
         {
             name: 'cricket-mania-auth',
-            partialize: (state) => ({ user: state.user, player: state.player, isAuthenticated: state.isAuthenticated }),
+            partialize: (state) => ({ user: state.user, player: state.player }),
         }
     )
 );

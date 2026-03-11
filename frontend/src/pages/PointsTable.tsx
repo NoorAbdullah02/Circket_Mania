@@ -40,10 +40,10 @@ export default function PointsTable() {
     useGSAP(() => {
         if (!isLoading && pointsTable) {
             gsap.from('.table-row', {
-                x: -30,
-                opacity: 0,
-                stagger: 0.1,
-                duration: 0.8,
+                x: -20,
+                scale: 0.98,
+                stagger: 0.05,
+                duration: 0.6,
                 ease: 'power3.out'
             });
         }

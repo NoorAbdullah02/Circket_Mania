@@ -28,16 +28,14 @@ export default function Login() {
         const tl = gsap.timeline({ defaults: { ease: 'power4.out', duration: 1 } });
 
         tl.from('.login-card', {
-            scale: 0.9,
-            opacity: 0,
+            scale: 0.95,
             y: 30,
             duration: 1.2,
             ease: 'expo.out'
         })
             .from('.login-element', {
-                opacity: 0,
-                y: 20,
-                stagger: 0.1,
+                y: 15,
+                stagger: 0.08,
                 ease: 'power3.out'
             }, '-=0.6');
     }, { scope: container });

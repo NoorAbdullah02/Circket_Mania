@@ -69,8 +69,8 @@ export default function AdminDashboard() {
         if (!loadingStats && !loadingPlayers && !hasAnimated.current) {
             hasAnimated.current = true;
             const tl = gsap.timeline({ defaults: { ease: 'power3.out', duration: 1 } });
-            tl.from('.admin-title', { x: -30, opacity: 0 });
-            tl.from('.tab-container', { x: 30, opacity: 0 }, '-=0.5');
+            tl.from('.admin-title', { x: -20, scale: 0.98 });
+            tl.from('.tab-container', { x: 20, scale: 0.98 }, '-=0.5');
         }
     }, { dependencies: [loadingStats, loadingPlayers], scope: container });
 
