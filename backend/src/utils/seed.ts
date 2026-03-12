@@ -51,7 +51,7 @@ export async function seedDemoPlayers() {
     try {
         // Get all teams
         const allTeams = await db.select().from(teams);
-        
+
         if (allTeams.length === 0) {
             console.log('⚠️  No teams found. Skipping player seeding.');
             return;
@@ -71,7 +71,7 @@ export async function seedDemoPlayers() {
         for (const team of allTeams) {
             // Check if team already has players
             const existingPlayers = await db.select().from(players).where(eq(players.teamId, team.id)).limit(1);
-            
+
             if (existingPlayers.length > 0) {
                 console.log(`⏭️  Team "${team.name}" already has players. Skipping.`);
                 continue;
@@ -82,10 +82,18 @@ export async function seedDemoPlayers() {
                 const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
                 const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
                 const playerName = `${firstName} ${lastName}`;
-                const playerEmail = `${playerName.toLowerCase().replace(/\s+/g, '.')}.${team.name.toLowerCase().replace(/\s+/g, '')}@cricket.com`;
+                const randomId = Math.floor(Math.random() * 100000); // Add random ID to avoid duplicates
+                const playerEmail = `player${i + 1}_${randomId}.${team.name.toLowerCase().replace(/\s+/g, '')}@cricket.com`;
                 const playerRole = playerRoles[Math.floor(Math.random() * playerRoles.length)];
                 const isCaptain = i === 0; // First player is captain
                 const jerseyNumber = i + 1;
+
+                // Check if email already exists
+                const existingEmail = await db.select().from(users).where(eq(users.email, playerEmail)).limit(1);
+                if (existingEmail.length > 0) {
+                    console.log(`⚠️  Email ${playerEmail} already exists. Skipping.`);
+                    continue;
+                }
 
                 // Create user account for player
                 const hashedPassword = await bcrypt.hash('Cricket@2024', 10);
@@ -128,3 +136,4 @@ export async function seedDemoPlayers() {
         console.error('❌ Error seeding demo players:', error);
     }
 }
+
