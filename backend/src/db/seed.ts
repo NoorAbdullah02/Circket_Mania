@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { db } from './index.js';
 import { tournamentSettings } from './schema.js';
-import { seedAdmins } from '../utils/seed.js';
+import { seedAdmins, seedDemoPlayers } from '../utils/seed.js';
 
 async function seed() {
     console.log('🌱 Seeding database...');
@@ -23,6 +23,9 @@ async function seed() {
 
     // 2. Seed Default Admins (Now handles updates internally)
     await seedAdmins();
+
+    // 3. Seed demo players for each team
+    await seedDemoPlayers();
 
     console.log('🌱 Seeding complete!');
     process.exit(0);
