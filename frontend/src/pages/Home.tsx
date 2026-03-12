@@ -64,16 +64,16 @@ export default function Home() {
                 <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_var(--brand-bg)_100%)] opacity-80"></div>
 
                 <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center">
-                    <div className="hero-badge inline-block glass-panel px-4 py-1.5 sm:px-6 sm:py-2 rounded-full mb-6 sm:mb-8 border-white/10 shadow-xl overflow-hidden group">
+                    <div className="hero-badge inline-block glass-panel px-4 py-2 sm:px-6 sm:py-2 rounded-full mb-8 sm:mb-8 border-white/10 shadow-xl overflow-hidden group">
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                        <span className="text-brand-blue font-heading tracking-[0.3em] text-[0.65rem] sm:text-xs uppercase flex items-center gap-2">
+                        <span className="text-brand-blue font-heading tracking-[0.3em] text-xs sm:text-xs uppercase flex items-center gap-2">
                             <span className="w-1 h-1 bg-brand-blue rounded-full animate-ping"></span>
                             <span className="hidden sm:inline">University Tournament 🏏 Season 2</span>
                             <span className="sm:hidden">Tournament S2</span>
                         </span>
                     </div>
 
-                    <h1 className="hero-title text-3xl sm:text-5xl md:text-8xl lg:text-[11rem] font-heading tracking-tighter text-white mb-8 sm:mb-16 uppercase leading-[0.75] flex flex-col items-center relative">
+                    <h1 className="hero-title text-4xl sm:text-5xl md:text-8xl lg:text-[11rem] font-heading tracking-tighter text-white mb-8 sm:mb-16 uppercase leading-[0.75] flex flex-col items-center relative">
                         <div className="absolute -inset-x-20 top-1/2 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none opacity-20"></div>
                         <div className="overflow-hidden py-2">
                             <span className="block title-ice relative">
@@ -81,10 +81,10 @@ export default function Home() {
                             </span>
                         </div>
                         <div className="flex items-center justify-center gap-2 sm:gap-4 md:gap-16 mt-3 sm:mt-6 relative title-mania-wrapper">
-                            <span className="font-light tracking-[0.4em] opacity-40 text-sm sm:text-2xl md:text-6xl text-gray-300">MANIA</span>
+                            <span className="font-light tracking-[0.4em] opacity-40 text-base sm:text-2xl md:text-6xl text-gray-300">MANIA</span>
                             <div className="relative s2-badge-container">
                                 <div className="absolute inset-x-0 -inset-y-4 bg-gradient-to-r from-brand-red to-orange-500 blur-3xl opacity-20 scale-150 animate-pulse"></div>
-                                <span className="s2-text block text-3xl sm:text-6xl md:text-[14rem] font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-brand-red to-red-900 relative z-10 drop-shadow-[0_0_60px_rgba(255,59,48,0.4)] leading-none -rotate-2 group cursor-default tracking-tighter">
+                                <span className="s2-text block text-5xl sm:text-6xl md:text-[14rem] font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-brand-red to-red-900 relative z-10 drop-shadow-[0_0_60px_rgba(255,59,48,0.4)] leading-none -rotate-2 group cursor-default tracking-tighter">
                                     S2
                                 </span>
                                 <div className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 md:-bottom-4 md:right-0 bg-white text-black px-1.5 sm:px-2 md:px-4 py-0.25 sm:py-0.5 md:py-1 text-[5px] sm:text-[6px] md:text-[8px] font-black uppercase tracking-[0.3em] rotate-1 shadow-2xl z-20 whitespace-nowrap">
