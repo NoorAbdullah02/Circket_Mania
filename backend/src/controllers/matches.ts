@@ -836,10 +836,23 @@ export async function getPointsTable(req: Request, res: Response): Promise<void>
     try {
         const points = await db.select().from(pointsTable).orderBy(desc(pointsTable.points));
 
+        // Get final match info to mark finalists
+        const [finalMatch] = await db
+            .select()
+            .from(matches)
+            .where(eq(matches.matchType, 'final'))
+            .limit(1);
+
         const pointsWithTeams = await Promise.all(
-            points.map(async (p) => {
+            points.map(async (p, index) => {
                 const [team] = await db.select().from(teams).where(eq(teams.id, p.teamId)).limit(1);
-                return { ...p, team };
+                // Mark as finalist if: final match exists AND team is in top 2
+                const isFinalist = finalMatch ? index < 2 : false;
+                return {
+                    ...p,
+                    team,
+                    isFinalist,
+                };
             })
         );
 
@@ -1196,7 +1209,7 @@ export async function createFinalMatch(req: Request, res: Response): Promise<voi
                 nrr: pointsTable.nrr,
             })
             .from(pointsTable)
-            .orderBy(pointsTable.points, pointsTable.nrr)
+            .orderBy(desc(pointsTable.points), desc(pointsTable.nrr))
             .limit(2);
 
         if (topTeams.length < 2) {
@@ -1242,20 +1255,18 @@ export async function createFinalMatch(req: Request, res: Response): Promise<voi
         const [teamA] = await db.select().from(teams).where(eq(teams.id, teamAId)).limit(1);
         const [teamB] = await db.select().from(teams).where(eq(teams.id, teamBId)).limit(1);
 
-        // Send emails to all players
+        // Send emails to ALL registered users (entire tournament)
         if (teamA && teamB) {
-            const teamAPlayers = await db.select({ userId: players.userId }).from(players).where(eq(players.teamId, teamA.id));
-            const teamBPlayers = await db.select({ userId: players.userId }).from(players).where(eq(players.teamId, teamB.id));
-            const allPlayerUserIds = [...teamAPlayers, ...teamBPlayers].map(p => p.userId);
+            // Get all registered users
+            const allUsers = await db.select().from(users);
 
-            for (const uid of allPlayerUserIds) {
-                const [user] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
-                if (user) {
-                    const emailData = finalMatchEmail(user.name, teamA.name, teamB.name, date, time, venue);
-                    emailData.to = user.email;
-                    await sendEmail(emailData);
-                }
+            for (const user of allUsers) {
+                const emailData = finalMatchEmail(user.name, teamA.name, teamB.name, date, time, venue);
+                emailData.to = user.email;
+                await sendEmail(emailData);
             }
+
+            console.log(`✅ Final match announcement sent to ${allUsers.length} users`);
         }
 
         res.status(201).json({
@@ -1307,5 +1318,115 @@ export async function getFinalMatch(req: Request, res: Response): Promise<void> 
     } catch (error) {
         console.error('Get final match error:', error);
         res.status(500).json({ error: 'Failed to fetch final match' });
+    }
+}
+
+/**
+ * Update final match details (date, time, venue)
+ */
+export async function updateFinalMatch(req: Request, res: Response): Promise<void> {
+    try {
+        const updates: any = {};
+        const { date, time, venue } = req.body;
+
+        if (date) updates.date = date;
+        if (time) updates.time = time;
+        if (venue) updates.venue = venue;
+
+        if (Object.keys(updates).length === 0) {
+            res.status(400).json({ error: 'No updates provided' });
+            return;
+        }
+
+        const [updatedMatch] = await db
+            .update(matches)
+            .set(updates)
+            .where(eq(matches.matchType, 'final'))
+            .returning();
+
+        if (!updatedMatch) {
+            res.status(404).json({ error: 'Final match not found' });
+            return;
+        }
+
+        // Send updated notification emails to all users
+        const [teamA] = await db.select().from(teams).where(eq(teams.id, updatedMatch.teamAId)).limit(1);
+        const [teamB] = await db.select().from(teams).where(eq(teams.id, updatedMatch.teamBId)).limit(1);
+
+        if (teamA && teamB && (date || time || venue)) {
+            const allUsers = await db.select().from(users);
+            for (const user of allUsers) {
+                const emailData = finalMatchEmail(
+                    user.name,
+                    teamA.name,
+                    teamB.name,
+                    updatedMatch.date,
+                    updatedMatch.time,
+                    updatedMatch.venue
+                );
+                emailData.to = user.email;
+                emailData.subject = `📅 Final Match Updated: ${teamA.name} vs ${teamB.name}`;
+                await sendEmail(emailData);
+            }
+        }
+
+        res.json({
+            message: 'Final match updated successfully',
+            match: updatedMatch,
+        });
+    } catch (error) {
+        console.error('Update final match error:', error);
+        res.status(500).json({ error: 'Failed to update final match' });
+    }
+}
+
+/**
+ * Delete final match
+ */
+export async function deleteFinalMatch(req: Request, res: Response): Promise<void> {
+    try {
+        const [finalMatch] = await db
+            .select()
+            .from(matches)
+            .where(eq(matches.matchType, 'final'))
+            .limit(1);
+
+        if (!finalMatch) {
+            res.status(404).json({ error: 'Final match not found' });
+            return;
+        }
+
+        // Delete related records
+        await db.delete(commentary).where(eq(commentary.matchId, finalMatch.id));
+        await db.delete(scores).where(eq(scores.matchId, finalMatch.id));
+        await db.delete(matchPlayerStats).where(eq(matchPlayerStats.matchId, finalMatch.id));
+        await db.delete(matches).where(eq(matches.id, finalMatch.id));
+
+        // Send cancellation email to all users
+        const [teamA] = await db.select().from(teams).where(eq(teams.id, finalMatch.teamAId)).limit(1);
+        const [teamB] = await db.select().from(teams).where(eq(teams.id, finalMatch.teamBId)).limit(1);
+
+        if (teamA && teamB) {
+            const allUsers = await db.select().from(users);
+            for (const user of allUsers) {
+                const subject = `❌ Final Match Cancelled: ${teamA.name} vs ${teamB.name}`;
+                const html = `
+                    <div style="font-family: Arial, sans-serif; color: #333; padding: 20px;">
+                        <h2 style="color: #FF3B30;">Final Match Cancelled</h2>
+                        <p>Dear ${user.name},</p>
+                        <p>We regret to inform you that the final match between <strong>${teamA.name}</strong> and <strong>${teamB.name}</strong> has been cancelled.</p>
+                        <p>Stay tuned for further updates.</p>
+                        <p>Best regards,<br><strong>Cricket Mania Admin</strong></p>
+                    </div>
+                `;
+                await sendEmail({ to: user.email, toName: user.name || 'User', subject, htmlContent: html });
+            }
+            console.log(`✅ Cancellation notification sent to ${allUsers.length} users`);
+        }
+
+        res.json({ message: 'Final match deleted successfully' });
+    } catch (error) {
+        console.error('Delete final match error:', error);
+        res.status(500).json({ error: 'Failed to delete final match' });
     }
 }

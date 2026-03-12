@@ -130,7 +130,7 @@ export default function AdminDashboard() {
         onSuccess: () => {
             toast.success('Team created successfully');
             setShowCreateForm(false);
-            setNewTeam({ name: '', shortName: '', color: '#38BDF8', logo: '' });
+            setNewTeam({ name: '', shortName: '', color: '#38BDF8', logo: '', coverPhoto: '' });
             queryClient.invalidateQueries({ queryKey: ['admin-teams'] });
             queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
         },
@@ -225,11 +225,30 @@ export default function AdminDashboard() {
     const completeMatchMutation = useMutation({
         mutationFn: async ({ matchId, data }: { matchId: string, data: any }) =>
             api.put(`/matches/${matchId}/complete`, data),
-        onSuccess: () => {
-            toast.success('Match completed and points updated!');
+        onSuccess: (_res, variables) => {
+            // Check if this is a final match
+            const isFinalMatch = scoringMatch?.matchType === 'final';
+            if (isFinalMatch && variables.data.winnerTeamId) {
+                // Show celebratory message for final match
+                toast.success('🏆 CHAMPION CROWNED! 🏆', {
+                    duration: 5000,
+                    iconTheme: {
+                        primary: '#FFD60A',
+                        secondary: '#0f1115'
+                    }
+                });
+                setTimeout(() => {
+                    toast.success('🎉 Congratulations to the Tournament Winners! 🎉', {
+                        duration: 4000,
+                    });
+                }, 1500);
+            } else {
+                toast.success('Match completed and points updated!');
+            }
             setScoringMatch(null);
             queryClient.invalidateQueries({ queryKey: ['admin-matches'] });
             queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+            queryClient.invalidateQueries({ queryKey: ['final-match'] });
         },
         onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to complete match')
     });
@@ -2023,7 +2042,7 @@ export default function AdminDashboard() {
                                         </Card>
                                     </div>
 
-                                    {/* Player Stats Detailed Sheet */}
+                                    {/* Player Stats Detailed Sheet - Two Teams */}
                                     <div className="lg:col-span-2 space-y-6">
                                         <div className="bg-black/40 p-1.5 rounded-lg border border-white/10 flex gap-1 mb-4">
                                             <button
@@ -2033,47 +2052,95 @@ export default function AdminDashboard() {
                                             </button>
                                         </div>
 
-                                        <div className="overflow-x-auto rounded-xl border border-white/10 custom-scrollbar">
-                                            <table className="w-full text-left border-collapse">
-                                                <thead>
-                                                    <tr className="bg-black/60 border-b border-white/10 text-[10px] uppercase font-heading text-gray-500 tracking-tighter">
-                                                        <th className="px-4 py-3 min-w-[150px]">Player</th>
-                                                        <th className="px-2 py-3">Runs</th>
-                                                        <th className="px-2 py-3">Balls</th>
-                                                        <th className="px-2 py-3">4s</th>
-                                                        <th className="px-2 py-3">6s</th>
-                                                        <th className="px-2 py-3 bg-brand-red/10">Wkts</th>
-                                                        <th className="px-2 py-3">Conc.</th>
-                                                        <th className="px-2 py-3">Bowled</th>
-                                                        <th className="px-2 py-3">Ctch</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-white/5">
-                                                    {matchPlayerStatsData.map((player) => (
-                                                        <tr key={player.playerId} className="hover:bg-white/5 transition-colors">
-                                                            <td className="px-4 py-3">
-                                                                <div className="flex items-center gap-2">
-                                                                    <div className={`w-2 h-2 rounded-full ${player.teamId === scoringMatch.teamAId ? 'bg-brand-yellow' : 'bg-brand-blue'}`} />
-                                                                    <div>
-                                                                        <div className="text-white text-xs font-bold leading-none">{player.playerName}</div>
-                                                                        <div className="text-[9px] text-gray-500 uppercase tracking-tighter mt-1">{player.teamId === scoringMatch.teamAId ? scoringMatch.teamA?.shortName : scoringMatch.teamB?.shortName}</div>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-2 py-3"><Input type="number" value={player.runsScored} onChange={(e) => handlePlayerStatChange(player.playerId, 'runsScored', parseInt(e.target.value) || 0)} className="w-12 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
-                                                            <td className="px-2 py-3"><Input type="number" value={player.ballsFaced} onChange={(e) => handlePlayerStatChange(player.playerId, 'ballsFaced', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
-                                                            <td className="px-2 py-3"><Input type="number" value={player.fours} onChange={(e) => handlePlayerStatChange(player.playerId, 'fours', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
-                                                            <td className="px-2 py-3"><Input type="number" value={player.sixes} onChange={(e) => handlePlayerStatChange(player.playerId, 'sixes', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
+                                        {/* Two Teams Grid */}
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                            {/* Team A */}
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-3 pb-3 border-b border-brand-yellow/30">
+                                                    <div className="w-3 h-3 rounded-full bg-brand-yellow" />
+                                                    <h3 className="text-sm font-heading text-white uppercase tracking-widest">{scoringMatch?.teamA?.name}</h3>
+                                                    <span className="text-[10px] text-gray-400 ml-auto font-bold">{matchPlayerStatsData.filter(p => p.teamId === scoringMatch.teamAId).length} Players</span>
+                                                </div>
+                                                <div className="overflow-x-auto rounded-xl border border-white/10 custom-scrollbar">
+                                                    <table className="w-full text-left border-collapse text-[10px]">
+                                                        <thead>
+                                                            <tr className="bg-black/60 border-b border-white/10 text-[9px] uppercase font-heading text-gray-500 tracking-tighter">
+                                                                <th className="px-3 py-2 min-w-[120px]">Player</th>
+                                                                <th className="px-1 py-2 text-center">Runs</th>
+                                                                <th className="px-1 py-2 text-center">Balls</th>
+                                                                <th className="px-1 py-2 text-center">4s</th>
+                                                                <th className="px-1 py-2 text-center">6s</th>
+                                                                <th className="px-1 py-2 text-center bg-brand-red/10">Wkts</th>
+                                                                <th className="px-1 py-2 text-center">Conc.</th>
+                                                                <th className="px-1 py-2 text-center">Bowled</th>
+                                                                <th className="px-1 py-2 text-center">Catch</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-white/5">
+                                                            {matchPlayerStatsData.filter(p => p.teamId === scoringMatch.teamAId).map((player) => (
+                                                                <tr key={player.playerId} className="hover:bg-white/5 transition-colors text-[10px]">
+                                                                    <td className="px-3 py-2">
+                                                                        <div className="text-white font-bold leading-tight truncate">{player.playerName}</div>
+                                                                    </td>
+                                                                    <td className="px-1 py-2 text-center"><Input type="number" value={player.runsScored} onChange={(e) => handlePlayerStatChange(player.playerId, 'runsScored', parseInt(e.target.value) || 0)} className="w-10 h-7 text-[10px] text-center bg-black/30 border-white/5 p-0.5" /></td>
+                                                                    <td className="px-1 py-2 text-center"><Input type="number" value={player.ballsFaced} onChange={(e) => handlePlayerStatChange(player.playerId, 'ballsFaced', parseInt(e.target.value) || 0)} className="w-9 h-7 text-[10px] text-center bg-black/30 border-white/5 p-0.5" /></td>
+                                                                    <td className="px-1 py-2 text-center"><Input type="number" value={player.fours} onChange={(e) => handlePlayerStatChange(player.playerId, 'fours', parseInt(e.target.value) || 0)} className="w-8 h-7 text-[10px] text-center bg-black/30 border-white/5 p-0.5" /></td>
+                                                                    <td className="px-1 py-2 text-center"><Input type="number" value={player.sixes} onChange={(e) => handlePlayerStatChange(player.playerId, 'sixes', parseInt(e.target.value) || 0)} className="w-8 h-7 text-[10px] text-center bg-black/30 border-white/5 p-0.5" /></td>
+                                                                    <td className="px-1 py-2 text-center bg-brand-red/5"><Input type="number" value={player.wickets} onChange={(e) => handlePlayerStatChange(player.playerId, 'wickets', parseInt(e.target.value) || 0)} className="w-8 h-7 text-[10px] text-center bg-red-900/20 border-white/5 p-0.5 text-brand-red font-bold" /></td>
+                                                                    <td className="px-1 py-2 text-center"><Input type="number" value={player.runsConceded} onChange={(e) => handlePlayerStatChange(player.playerId, 'runsConceded', parseInt(e.target.value) || 0)} className="w-8 h-7 text-[10px] text-center bg-black/30 border-white/5 p-0.5" /></td>
+                                                                    <td className="px-1 py-2 text-center"><Input type="number" value={player.ballsBowled} onChange={(e) => handlePlayerStatChange(player.playerId, 'ballsBowled', parseInt(e.target.value) || 0)} className="w-8 h-7 text-[10px] text-center bg-black/30 border-white/5 p-0.5" /></td>
+                                                                    <td className="px-1 py-2 text-center"><Input type="number" value={player.catches} onChange={(e) => handlePlayerStatChange(player.playerId, 'catches', parseInt(e.target.value) || 0)} className="w-8 h-7 text-[10px] text-center bg-black/30 border-white/5 p-0.5" /></td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
 
-                                                            <td className="px-2 py-3 bg-brand-red/5"><Input type="number" value={player.wickets} onChange={(e) => handlePlayerStatChange(player.playerId, 'wickets', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-red-900/20 border-white/5 p-1 text-brand-red font-bold" /></td>
-                                                            <td className="px-2 py-3"><Input type="number" value={player.runsConceded} onChange={(e) => handlePlayerStatChange(player.playerId, 'runsConceded', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
-                                                            <td className="px-2 py-3"><Input type="number" value={player.ballsBowled} onChange={(e) => handlePlayerStatChange(player.playerId, 'ballsBowled', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
-                                                            <td className="px-2 py-3"><Input type="number" value={player.catches} onChange={(e) => handlePlayerStatChange(player.playerId, 'catches', parseInt(e.target.value) || 0)} className="w-10 h-8 text-[11px] bg-black/30 border-white/5 p-1" /></td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                            {/* Team B */}
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-3 pb-3 border-b border-brand-blue/30">
+                                                    <div className="w-3 h-3 rounded-full bg-brand-blue" />
+                                                    <h3 className="text-sm font-heading text-white uppercase tracking-widest">{scoringMatch?.teamB?.name}</h3>
+                                                    <span className="text-[10px] text-gray-400 ml-auto font-bold">{matchPlayerStatsData.filter(p => p.teamId === scoringMatch.teamBId).length} Players</span>
+                                                </div>
+                                                <div className="overflow-x-auto rounded-xl border border-white/10 custom-scrollbar">
+                                                    <table className="w-full text-left border-collapse text-[10px]">
+                                                        <thead>
+                                                            <tr className="bg-black/60 border-b border-white/10 text-[9px] uppercase font-heading text-gray-500 tracking-tighter">
+                                                                <th className="px-3 py-2 min-w-[120px]">Player</th>
+                                                                <th className="px-1 py-2 text-center">Runs</th>
+                                                                <th className="px-1 py-2 text-center">Balls</th>
+                                                                <th className="px-1 py-2 text-center">4s</th>
+                                                                <th className="px-1 py-2 text-center">6s</th>
+                                                                <th className="px-1 py-2 text-center bg-brand-red/10">Wkts</th>
+                                                                <th className="px-1 py-2 text-center">Conc.</th>
+                                                                <th className="px-1 py-2 text-center">Bowled</th>
+                                                                <th className="px-1 py-2 text-center">Catch</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-white/5">
+                                                            {matchPlayerStatsData.filter(p => p.teamId === scoringMatch.teamBId).map((player) => (
+                                                                <tr key={player.playerId} className="hover:bg-white/5 transition-colors text-[10px]">
+                                                                    <td className="px-3 py-2">
+                                                                        <div className="text-white font-bold leading-tight truncate">{player.playerName}</div>
+                                                                    </td>
+                                                                    <td className="px-1 py-2 text-center"><Input type="number" value={player.runsScored} onChange={(e) => handlePlayerStatChange(player.playerId, 'runsScored', parseInt(e.target.value) || 0)} className="w-10 h-7 text-[10px] text-center bg-black/30 border-white/5 p-0.5" /></td>
+                                                                    <td className="px-1 py-2 text-center"><Input type="number" value={player.ballsFaced} onChange={(e) => handlePlayerStatChange(player.playerId, 'ballsFaced', parseInt(e.target.value) || 0)} className="w-9 h-7 text-[10px] text-center bg-black/30 border-white/5 p-0.5" /></td>
+                                                                    <td className="px-1 py-2 text-center"><Input type="number" value={player.fours} onChange={(e) => handlePlayerStatChange(player.playerId, 'fours', parseInt(e.target.value) || 0)} className="w-8 h-7 text-[10px] text-center bg-black/30 border-white/5 p-0.5" /></td>
+                                                                    <td className="px-1 py-2 text-center"><Input type="number" value={player.sixes} onChange={(e) => handlePlayerStatChange(player.playerId, 'sixes', parseInt(e.target.value) || 0)} className="w-8 h-7 text-[10px] text-center bg-black/30 border-white/5 p-0.5" /></td>
+                                                                    <td className="px-1 py-2 text-center bg-brand-red/5"><Input type="number" value={player.wickets} onChange={(e) => handlePlayerStatChange(player.playerId, 'wickets', parseInt(e.target.value) || 0)} className="w-8 h-7 text-[10px] text-center bg-red-900/20 border-white/5 p-0.5 text-brand-red font-bold" /></td>
+                                                                    <td className="px-1 py-2 text-center"><Input type="number" value={player.runsConceded} onChange={(e) => handlePlayerStatChange(player.playerId, 'runsConceded', parseInt(e.target.value) || 0)} className="w-8 h-7 text-[10px] text-center bg-black/30 border-white/5 p-0.5" /></td>
+                                                                    <td className="px-1 py-2 text-center"><Input type="number" value={player.ballsBowled} onChange={(e) => handlePlayerStatChange(player.playerId, 'ballsBowled', parseInt(e.target.value) || 0)} className="w-8 h-7 text-[10px] text-center bg-black/30 border-white/5 p-0.5" /></td>
+                                                                    <td className="px-1 py-2 text-center"><Input type="number" value={player.catches} onChange={(e) => handlePlayerStatChange(player.playerId, 'catches', parseInt(e.target.value) || 0)} className="w-8 h-7 text-[10px] text-center bg-black/30 border-white/5 p-0.5" /></td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
                                         </div>
+
                                         <div className="flex justify-end pt-4 gap-4">
                                             <Button
                                                 variant="outline"

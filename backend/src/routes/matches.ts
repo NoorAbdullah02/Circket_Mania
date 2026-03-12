@@ -6,7 +6,7 @@ import {
     getPointsTable, addCommentary, getCommentary,
     getDashboardStats, getTournamentSettings, updateTournamentSettings,
     getMatchPlayerStats, updateMatchPlayerStats, sendMatchReminders, sendMatchResultsManual,
-    createFinalMatch, getFinalMatch
+    createFinalMatch, getFinalMatch, updateFinalMatch, deleteFinalMatch
 } from '../controllers/matches.js';
 
 const router = Router();
@@ -28,9 +28,12 @@ router.post('/:id/remind', authenticate, adminOnly, sendMatchReminders);
 router.post('/:id/send-results', authenticate, adminOnly, sendMatchResultsManual);
 
 router.put('/settings', authenticate, adminOnly, updateTournamentSettings);
+router.put('/final/update', authenticate, adminOnly, updateFinalMatch);
 router.put('/:id', authenticate, adminOnly, updateMatch);
 router.put('/:id/score', authenticate, adminOnly, updateScore);
 router.put('/:id/complete', authenticate, adminOnly, completeMatch);
+
+router.delete('/final/delete', authenticate, adminOnly, deleteFinalMatch);
 router.put('/:id/player-stats', authenticate, adminOnly, updateMatchPlayerStats);
 
 router.delete('/:id', authenticate, adminOnly, deleteMatch);

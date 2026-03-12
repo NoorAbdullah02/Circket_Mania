@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { Trophy, Lock, Calendar, MapPin, Clock, Crown, Flame, Sparkles, Users } from 'lucide-react';
+import { Trophy, Lock, Calendar, MapPin, Clock, Crown, Flame, Sparkles } from 'lucide-react';
 import api from '../api/client';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
@@ -30,9 +30,23 @@ export default function FinalMatch() {
         refetchInterval: 10000,
     });
 
+    const { data: winnerTeamPlayers } = useQuery({
+        queryKey: ['winner-team-players', finalMatch?.winner?.id],
+        queryFn: async () => {
+            if (!finalMatch?.winner?.id) return [];
+            try {
+                const { data } = await api.get(`/teams/${finalMatch.winner.id}`);
+                return data.players || [];
+            } catch {
+                return [];
+            }
+        },
+        enabled: !!finalMatch?.winner?.id,
+    });
+
     const createFinalMatchMutation = useMutation({
         mutationFn: async (data: any) => api.post('/matches/final/create', data),
-        onSuccess: (res) => {
+        onSuccess: () => {
             toast.success('🏆 Final Match Created Successfully!');
             setShowCreateForm(false);
             setShowPasswordConfirm(false);
@@ -47,10 +61,36 @@ export default function FinalMatch() {
         }
     });
 
+    const updateFinalMatchMutation = useMutation({
+        mutationFn: async (data: any) => api.put('/matches/final/update', data),
+        onSuccess: () => {
+            toast.success('✅ Final Match Updated Successfully!');
+            setFormData({ date: '', time: '', venue: '' });
+            queryClient.invalidateQueries({ queryKey: ['final-match'] });
+        },
+        onError: (err: any) => {
+            const errorMsg = err.response?.data?.error || 'Failed to update final match';
+            toast.error(errorMsg);
+        }
+    });
+
+    const deleteFinalMatchMutation = useMutation({
+        mutationFn: async () => api.delete('/matches/final/delete'),
+        onSuccess: () => {
+            toast.success('🗑️ Final Match Deleted Successfully!');
+            queryClient.invalidateQueries({ queryKey: ['final-match'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-matches'] });
+        },
+        onError: (err: any) => {
+            const errorMsg = err.response?.data?.error || 'Failed to delete final match';
+            toast.error(errorMsg);
+        }
+    });
+
     const handleCreateSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!password) {
-            setPasswordError('Password is required');
+            toast.error('Password is required');
             return;
         }
         createFinalMatchMutation.mutate(formData);
@@ -58,7 +98,6 @@ export default function FinalMatch() {
 
     const isTournamentComplete = finalMatch?.isTournamentComplete;
     const winnerTeam = finalMatch?.winner;
-    const teams = finalMatch ? [finalMatch.teamA, finalMatch.teamB] : [];
 
     return (
         <div className="space-y-8">
@@ -109,6 +148,41 @@ export default function FinalMatch() {
                                 <p className="mt-2 text-brand-yellow font-bold tracking-wider">CHAMPIONS</p>
                             </div>
                         </div>
+
+                        {/* Team Members Section */}
+                        {winnerTeamPlayers && winnerTeamPlayers.length > 0 && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.6, delay: 0.3 }}
+                                className="mt-8 rounded-2xl border border-brand-yellow/30 bg-gradient-to-br from-brand-yellow/5 to-orange-500/5 p-6"
+                            >
+                                <h4 className="mb-4 font-heading text-lg tracking-widest text-brand-yellow uppercase">
+                                    🎉 Congratulations to All Team Members 🎉
+                                </h4>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                    {winnerTeamPlayers.map((player: any) => (
+                                        <motion.div
+                                            key={player.id}
+                                            whileHover={{ scale: 1.05 }}
+                                            className="rounded-lg border border-brand-yellow/20 bg-black/40 p-3 text-center hover:border-brand-yellow/50 transition-colors"
+                                        >
+                                            <img
+                                                src={player.profileImage || `https://ui-avatars.com/api/?name=${player.user?.name}&background=random`}
+                                                alt={player.user?.name}
+                                                className="h-12 w-12 mx-auto rounded-full object-cover border border-brand-yellow/30 mb-2"
+                                            />
+                                            <p className="text-xs font-bold text-white truncate">{player.user?.name || 'Player'}</p>
+                                            {player.isCaptain && (
+                                                <div className="mt-1 flex justify-center">
+                                                    <Crown className="h-3 w-3 text-brand-yellow" />
+                                                </div>
+                                            )}
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            </motion.div>
+                        )}
 
                         {/* Confetti effect */}
                         <div className="mt-8 flex justify-center gap-2">
