@@ -1174,3 +1174,138 @@ export async function updateMatchPlayerStats(req: Request, res: Response): Promi
         res.status(500).json({ error: 'Failed to update stats' });
     }
 }
+
+/**
+ * Create a final match with top 2 teams
+ * Automatically selects the top 2 teams from the points table
+ */
+export async function createFinalMatch(req: Request, res: Response): Promise<void> {
+    try {
+        const { date, time, venue } = req.body;
+
+        if (!date || !time || !venue) {
+            res.status(400).json({ error: 'Date, time, and venue are required' });
+            return;
+        }
+
+        // Get top 2 teams from points table (sorted by points DESC, then NRR DESC)
+        const topTeams = await db
+            .select({
+                teamId: pointsTable.teamId,
+                points: pointsTable.points,
+                nrr: pointsTable.nrr,
+            })
+            .from(pointsTable)
+            .orderBy(pointsTable.points, pointsTable.nrr)
+            .limit(2);
+
+        if (topTeams.length < 2) {
+            res.status(400).json({ error: 'Need at least 2 teams in the tournament' });
+            return;
+        }
+
+        const teamAId = topTeams[0].teamId;
+        const teamBId = topTeams[1].teamId;
+
+        // Check if final match already exists
+        const existingFinal = await db
+            .select()
+            .from(matches)
+            .where(eq(matches.matchType, 'final'))
+            .limit(1);
+
+        if (existingFinal.length > 0) {
+            res.status(400).json({ error: 'Final match already exists' });
+            return;
+        }
+
+        // Get tournament settings for overs
+        const [settings] = await db.select().from(tournamentSettings).limit(1);
+        const overs = settings?.defaultOvers || 20;
+
+        // Create final match
+        const [finalMatch] = await db.insert(matches).values({
+            teamAId,
+            teamBId,
+            overs,
+            date,
+            time,
+            venue,
+            matchType: 'final',
+            status: 'upcoming',
+        }).returning();
+
+        // Create score entry
+        await db.insert(scores).values({ matchId: finalMatch.id });
+
+        // Get team details for email
+        const [teamA] = await db.select().from(teams).where(eq(teams.id, teamAId)).limit(1);
+        const [teamB] = await db.select().from(teams).where(eq(teams.id, teamBId)).limit(1);
+
+        // Send emails to all players
+        if (teamA && teamB) {
+            const teamAPlayers = await db.select({ userId: players.userId }).from(players).where(eq(players.teamId, teamA.id));
+            const teamBPlayers = await db.select({ userId: players.userId }).from(players).where(eq(players.teamId, teamB.id));
+            const allPlayerUserIds = [...teamAPlayers, ...teamBPlayers].map(p => p.userId);
+
+            for (const uid of allPlayerUserIds) {
+                const [user] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
+                if (user) {
+                    const emailData = finalMatchEmail(user.name, teamA.name, teamB.name, date, time, venue);
+                    emailData.to = user.email;
+                    await sendEmail(emailData);
+                }
+            }
+        }
+
+        res.status(201).json({
+            message: 'Final match created successfully',
+            match: finalMatch,
+            teamA: { id: teamA?.id, name: teamA?.name, points: topTeams[0].points },
+            teamB: { id: teamB?.id, name: teamB?.name, points: topTeams[1].points },
+        });
+    } catch (error) {
+        console.error('Create final match error:', error);
+        res.status(500).json({ error: 'Failed to create final match' });
+    }
+}
+
+/**
+ * Get the final match (if exists and completed)
+ */
+export async function getFinalMatch(req: Request, res: Response): Promise<void> {
+    try {
+        const [finalMatch] = await db
+            .select()
+            .from(matches)
+            .where(eq(matches.matchType, 'final'))
+            .limit(1);
+
+        if (!finalMatch) {
+            res.status(404).json({ error: 'Final match not created yet' });
+            return;
+        }
+
+        const [teamA] = await db.select().from(teams).where(eq(teams.id, finalMatch.teamAId)).limit(1);
+        const [teamB] = await db.select().from(teams).where(eq(teams.id, finalMatch.teamBId)).limit(1);
+        const [score] = await db.select().from(scores).where(eq(scores.matchId, finalMatch.id)).limit(1);
+
+        let winner = null;
+        if (finalMatch.winnerTeamId) {
+            const [winnerTeam] = await db.select().from(teams).where(eq(teams.id, finalMatch.winnerTeamId)).limit(1);
+            winner = winnerTeam;
+        }
+
+        res.json({
+            match: finalMatch,
+            teamA,
+            teamB,
+            score,
+            winner,
+            isTournamentComplete: finalMatch.status === 'completed' && winner,
+        });
+    } catch (error) {
+        console.error('Get final match error:', error);
+        res.status(500).json({ error: 'Failed to fetch final match' });
+    }
+}

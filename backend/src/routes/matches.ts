@@ -5,13 +5,15 @@ import {
     updateScore, completeMatch, autoGenerateMatches,
     getPointsTable, addCommentary, getCommentary,
     getDashboardStats, getTournamentSettings, updateTournamentSettings,
-    getMatchPlayerStats, updateMatchPlayerStats, sendMatchReminders, sendMatchResultsManual
+    getMatchPlayerStats, updateMatchPlayerStats, sendMatchReminders, sendMatchResultsManual,
+    createFinalMatch, getFinalMatch
 } from '../controllers/matches.js';
 
 const router = Router();
 
 router.get('/', getAllMatches);
 router.get('/points-table', getPointsTable);
+router.get('/final', getFinalMatch);
 router.get('/dashboard-stats', authenticate, adminOnly, getDashboardStats);
 router.get('/settings', getTournamentSettings);
 router.get('/:id', getMatchById);
@@ -20,6 +22,7 @@ router.get('/:matchId/commentary', getCommentary);
 
 router.post('/', authenticate, adminOnly, createMatch);
 router.post('/auto-generate', authenticate, adminOnly, autoGenerateMatches);
+router.post('/final/create', authenticate, adminOnly, createFinalMatch);
 router.post('/:id/commentary', authenticate, adminOnly, addCommentary);
 router.post('/:id/remind', authenticate, adminOnly, sendMatchReminders);
 router.post('/:id/send-results', authenticate, adminOnly, sendMatchResultsManual);

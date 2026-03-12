@@ -10,6 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import FinalMatch from '../components/FinalMatch';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { formatTime12h } from '../lib/utils';
@@ -456,6 +457,7 @@ export default function AdminDashboard() {
         { id: 'teams', label: 'Franchises', icon: <Shield className="w-4 h-4" /> },
         { id: 'players', label: 'Draft Pool', icon: <Users className="w-4 h-4" /> },
         { id: 'matches', label: 'Match Settings', icon: <Calendar className="w-4 h-4" /> },
+        { id: 'final', label: 'Final Match', icon: <Trophy className="w-4 h-4" /> },
         { id: 'history', label: 'Tournament History', icon: <History className="w-4 h-4" /> },
     ];
 
@@ -1335,6 +1337,10 @@ export default function AdminDashboard() {
                                 </div>
                             )}
                         </div>
+                    )}
+
+                    {activeTab === 'final' && (
+                        <FinalMatch />
                     )}
 
                     {activeTab === 'history' && (
