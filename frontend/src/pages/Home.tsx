@@ -60,7 +60,7 @@ export default function Home() {
             </div>
 
             {/* Hero Section */}
-            <section className="relative min-h-[95vh] flex items-center justify-center overflow-hidden pt-20">
+            <section className="relative min-h-[95vh] flex items-center justify-center overflow-hidden pt-8 sm:pt-16 md:pt-20">
                 <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_var(--brand-bg)_100%)] opacity-80"></div>
 
                 <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center">
