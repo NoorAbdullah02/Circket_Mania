@@ -1,8 +1,3 @@
-/**
- * NRR (Net Run Rate) Calculation Service
- * Handles conversion of cricket overs and NRR calculations with proper precision
- */
-
 import { db } from '../db/index.js';
 import { matches, scores, pointsTable, teams } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';

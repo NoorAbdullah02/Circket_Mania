@@ -389,11 +389,9 @@ export async function updateScore(req: Request, res: Response): Promise<void> {
             return;
         }
 
-        // If match is completed, recalculate points table to reflect score changes in NRR
-        const [match] = await db.select().from(matches).where(eq(matches.id, id)).limit(1);
-        if (match && match.status === 'completed') {
-            await recalculatePointsTable();
-        }
+        // Always recalculate points table when scores are updated to ensure NRR is current
+        // This handles both live updates and post-match adjustments
+        await recalculatePointsTable();
 
         res.json({ message: 'Score updated', score });
     } catch (error) {
