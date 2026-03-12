@@ -40,7 +40,6 @@ export default function Home() {
             .from('.hero-btns', { y: 20, scale: 0.9, duration: 1 }, '-=0.8')
             .from('.hero-bg-accent', { scale: 0, opacity: 0, duration: 2 }, 0);
 
-        // Continuous float animation for icons
         gsap.to('.float-icon', {
             y: -20,
             duration: 2,
@@ -112,13 +111,11 @@ export default function Home() {
                         </Link>
                     </div>
 
-                    {/* Floating Orbs for depth */}
                     <div className="absolute -left-20 top-1/2 w-40 h-40 bg-brand-blue/20 blur-3xl float-icon hidden lg:block"></div>
                     <div className="absolute -right-20 top-1/4 w-32 h-32 bg-brand-red/20 blur-3xl float-icon hidden lg:block"></div>
                 </div>
             </section>
 
-            {/* Stats/Features Section */}
             <section className="py-16 sm:py-24 md:py-32 relative z-10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-8 sm:mb-16">
                     <h2 className="text-[0.65rem] sm:text-xs font-bold text-brand-blue uppercase tracking-[0.5em] mb-2 sm:mb-4">Core Experience</h2>
