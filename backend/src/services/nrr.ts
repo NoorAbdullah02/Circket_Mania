@@ -167,7 +167,6 @@ export async function calculateTeamStats(teamId: string, matchQuota: number = 20
  * calculateNRR(stats); // Returns +1.0
  */
 export function calculateNRR(stats: TeamStats): number {
-    // Validation
     if (stats.totalOversPlayed === 0 || stats.totalOversBowled === 0) {
         console.warn('Cannot calculate NRR: team has no completed matches');
         return 0;
@@ -177,7 +176,6 @@ export function calculateNRR(stats: TeamStats): number {
     const concededRate = stats.totalRunsConceded / stats.totalOversBowled;
     const nrr = runsRate - concededRate;
 
-    // Round to 3 decimal places for storage
     return parseFloat(nrr.toFixed(3));
 }
 
