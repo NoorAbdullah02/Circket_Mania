@@ -76,7 +76,7 @@ export default function PointsTable() {
                 </div>
 
                 <Card className="glass-card overflow-hidden">
-                    <div className="overflow-x-auto" style={{scrollBehavior: 'smooth'}}>
+                    <div className="overflow-x-auto" style={{ scrollBehavior: 'smooth' }}>
                         <table className="w-full text-left border-collapse text-[11px] sm:text-sm md:text-base">
                             <thead>
                                 <tr className="bg-black/60 border-b border-white/10 uppercase text-[9px] sm:text-xs tracking-widest font-heading text-gray-400">

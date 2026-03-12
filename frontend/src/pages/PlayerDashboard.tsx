@@ -73,16 +73,16 @@ export default function PlayerDashboard() {
     useGSAP(() => {
         if (player?.status === 'activated') {
             const tl = gsap.timeline({ defaults: { ease: 'power3.out', duration: 0.8 } });
-            
+
             // Check for elements in current scope
             const cards = container.current?.querySelectorAll('.dashboard-card');
-            
+
             if (cards && cards.length > 0 && !hasAnimated.current) {
                 hasAnimated.current = true;
-                tl.from('.dashboard-header', 
+                tl.from('.dashboard-header',
                     { y: -20, scale: 0.98 }
-                ).from('.dashboard-card', 
-                    { y: 20, scale: 0.98, stagger: { amount: 0.3 } }, 
+                ).from('.dashboard-card',
+                    { y: 20, scale: 0.98, stagger: { amount: 0.3 } },
                     '-=0.4'
                 );
             } else if (cards && cards.length > 0 && hasAnimated.current) {
@@ -129,7 +129,7 @@ export default function PlayerDashboard() {
                 const { data: userData } = await api.get('/auth/me');
                 // Force update the entire auth store to reflect "activated" status globally
                 setAuth(userData.user, userData.player, useAuthStore.getState().accessToken!);
-                
+
                 // Reset animation flag to allow the reveal animation to run
                 hasAnimated.current = false;
                 queryClient.invalidateQueries();

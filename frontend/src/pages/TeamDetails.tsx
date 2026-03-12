@@ -196,8 +196,8 @@ export default function TeamDetails() {
                                             </div>
                                         </div>
                                         <div style={{ textAlign: 'center', fontSize: '9px', color: '#666', width: '100%' }}>
-                                            <div><span style={{ color: '#fff', fontWeight: 600, fontSize: '10px' }}>{player.totalRuns || 0}</span> <span style={{color: '#666'}}>runs</span></div>
-                                            <div><span style={{ color: '#fff', fontWeight: 600, fontSize: '10px' }}>{player.totalWickets || 0}</span> <span style={{color: '#666'}}>wkts</span></div>
+                                            <div><span style={{ color: '#fff', fontWeight: 600, fontSize: '10px' }}>{player.totalRuns || 0}</span> <span style={{ color: '#666' }}>runs</span></div>
+                                            <div><span style={{ color: '#fff', fontWeight: 600, fontSize: '10px' }}>{player.totalWickets || 0}</span> <span style={{ color: '#666' }}>wkts</span></div>
                                         </div>
                                     </Link>
                                 ))

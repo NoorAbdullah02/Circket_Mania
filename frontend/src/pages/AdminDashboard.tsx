@@ -1533,27 +1533,27 @@ export default function AdminDashboard() {
                         >
                             {/* Modal Header/Profile Head */}
                             <div className="relative h-40 bg-gradient-to-br from-brand-blue/20 to-brand-yellow/20 p-6 flex items-end">
-                                    <div className="absolute top-4 right-4 flex items-center gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-9 px-4 bg-brand-blue text-black border-none hover:bg-brand-blue/80 font-bold uppercase tracking-widest text-[10px] rounded-xl flex items-center gap-2 shadow-lg"
-                                            onClick={() => {
-                                                setViewingPlayer(null);
-                                                navigate(`/player/${viewingPlayer.id}`);
-                                            }}
-                                        >
-                                            <Trophy className="w-3 h-3" /> View Public Profile
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-9 w-9 p-0 text-white hover:bg-white/10 rounded-full"
-                                            onClick={() => setViewingPlayer(null)}
-                                        >
-                                            <X className="w-5 h-5" />
-                                        </Button>
-                                    </div>
+                                <div className="absolute top-4 right-4 flex items-center gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-9 px-4 bg-brand-blue text-black border-none hover:bg-brand-blue/80 font-bold uppercase tracking-widest text-[10px] rounded-xl flex items-center gap-2 shadow-lg"
+                                        onClick={() => {
+                                            setViewingPlayer(null);
+                                            navigate(`/player/${viewingPlayer.id}`);
+                                        }}
+                                    >
+                                        <Trophy className="w-3 h-3" /> View Public Profile
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-9 w-9 p-0 text-white hover:bg-white/10 rounded-full"
+                                        onClick={() => setViewingPlayer(null)}
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </Button>
+                                </div>
 
                                 <div className="flex gap-6 items-end">
                                     <div className="w-24 h-24 rounded-2xl bg-black border-[3px] border-white/20 overflow-hidden shadow-2xl translate-y-8">
