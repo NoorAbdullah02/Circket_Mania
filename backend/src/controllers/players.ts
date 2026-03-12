@@ -609,13 +609,26 @@ export async function getPlayerOfTheSeries(req: Request, res: Response): Promise
             .select({
                 id: players.id,
                 name: users.name,
+                email: users.email,
                 teamId: players.teamId,
                 profileImage: players.profileImage,
                 totalRuns: players.totalRuns,
                 totalWickets: players.totalWickets,
-                totalCatches: players.totalCatches, teamToken: players.teamToken,
+                totalCatches: players.totalCatches,
+                teamToken: players.teamToken,
                 totalSixes: players.totalSixes,
                 totalFours: players.totalFours,
+                batch: players.batch,
+                role: players.role,
+                status: players.status,
+                isCaptain: players.isCaptain,
+                jerseyNumber: players.jerseyNumber,
+                bio: players.bio,
+                matchesPlayed: players.matchesPlayed,
+                userRole: users.role,
+                totalBallsFaced: players.totalBallsFaced,
+                totalBallsBowled: players.totalBallsBowled,
+                totalRunsConceded: players.totalRunsConceded,
             })
             .from(players)
             .innerJoin(users, eq(players.userId, users.id))
@@ -626,7 +639,7 @@ export async function getPlayerOfTheSeries(req: Request, res: Response): Promise
             return;
         }
 
-        const teamsMap: Record<string, string> = {};
+        const teamsMap: Record<string, any> = {};
         const allTeams = await db.select({
             id: teams.id,
             name: teams.name,
@@ -635,7 +648,7 @@ export async function getPlayerOfTheSeries(req: Request, res: Response): Promise
             color: teams.color,
             createdAt: teams.createdAt,
         }).from(teams);
-        allTeams.forEach(t => { teamsMap[t.id] = t.name; });
+        allTeams.forEach(t => { teamsMap[t.id] = t; });
 
         // Simple MVP Points formula:
         // Runs = 1 pt
@@ -651,7 +664,7 @@ export async function getPlayerOfTheSeries(req: Request, res: Response): Promise
                 ((p.totalFours || 0) * 1);
             return {
                 ...p,
-                teamName: p.teamId ? teamsMap[p.teamId] : 'Unknown',
+                teamName: p.teamId ? teamsMap[p.teamId]?.name : 'Unknown',
                 points
             };
         }).sort((a, b) => b.points - a.points);

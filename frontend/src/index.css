@@ -157,4 +157,27 @@
   .secondary-button:hover {
     box-shadow: 0 0 20px rgba(10, 132, 255, 0.4);
   }
-}
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(56, 189, 248, 0.4);
+    border-radius: 4px;
+    transition: background 0.3s ease;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(56, 189, 248, 0.6);
+  }
+
+  .custom-scrollbar {
+    scrollbar-color: rgba(56, 189, 248, 0.4) transparent;
+    scrollbar-width: thin;
+  }

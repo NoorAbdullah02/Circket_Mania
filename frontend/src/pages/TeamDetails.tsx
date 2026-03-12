@@ -85,10 +85,10 @@ export default function TeamDetails() {
                 <div className="absolute inset-0 opacity-10" style={{ backgroundColor: team.color || '#38BDF8' }} />
                 <div className="absolute inset-0 bg-gradient-to-br from-brand-bg/80 via-transparent to-brand-bg/80" />
 
-                <div className="relative flex flex-col md:flex-row items-center gap-12 p-10 md:p-16">
+                <div className="relative flex flex-col md:flex-row items-center gap-6 sm:gap-8 md:gap-12 p-6 sm:p-10 md:p-16">
                     <div className="relative group">
                         <div className="absolute -inset-6 rounded-full blur-3xl opacity-30 group-hover:opacity-50 transition-opacity duration-1000" style={{ backgroundColor: team.color }} />
-                        <div className="relative w-40 h-40 md:w-52 md:h-52 rounded-full p-1 bg-gradient-to-br from-white/20 to-transparent">
+                        <div className="relative w-32 h-32 sm:w-40 sm:h-40 md:w-52 md:h-52 rounded-full p-1 bg-gradient-to-br from-white/20 to-transparent">
                             <img
                                 src={team.logo || `https://ui-avatars.com/api/?name=${team.name}&background=random&size=200`}
                                 alt={team.name}
@@ -101,8 +101,8 @@ export default function TeamDetails() {
                     </div>
 
                     <div className="text-center md:text-left flex-1">
-                        <div className="flex items-center gap-4 mb-4 justify-center md:justify-start">
-                            <span className="text-brand-yellow font-black text-2xl tracking-[0.3em] uppercase drop-shadow-[0_0_10px_rgba(255,214,10,0.3)]">{team.shortName}</span>
+                        <div className="flex items-center gap-2 sm:gap-4 mb-2 sm:mb-4 justify-center md:justify-start flex-wrap">
+                            <span className="text-brand-yellow font-black text-lg sm:text-2xl tracking-[0.3em] uppercase drop-shadow-[0_0_10px_rgba(255,214,10,0.3)]">{team.shortName}</span>
                             <div className="w-px h-6 bg-white/20" />
                             <div className="flex items-center gap-2">
                                 <div className="w-3 h-3 rounded-full shadow-[0_0_10px_currentColor]" style={{ backgroundColor: team.color }} />
@@ -110,23 +110,23 @@ export default function TeamDetails() {
                             </div>
                         </div>
 
-                        <h1 className="text-5xl md:text-8xl font-heading tracking-tighter text-white uppercase leading-none mb-8">
+                        <h1 className="text-2xl sm:text-4xl md:text-8xl font-heading tracking-tighter text-white uppercase leading-none mb-4 sm:mb-8">
                             {team.name}
                         </h1>
 
-                        <div className="flex flex-wrap items-center gap-6 justify-center md:justify-start">
+                        <div className="flex flex-wrap items-center gap-3 sm:gap-6 justify-center md:justify-start">
                             {[
                                 { label: 'Active Roster', value: team.players?.length || 0, color: 'text-brand-blue', icon: Users },
                                 { label: 'Battles Won', value: completedMatches.filter((m: any) => m.winnerTeamId === id).length, color: 'text-emerald-400', icon: Trophy },
                                 { label: 'Upcoming', value: upcomingMatches.length, color: 'text-brand-yellow', icon: Calendar },
                             ].map((stat, i) => (
-                                <div key={stat.label} className="team-stat glass-panel px-6 py-3 rounded-2xl flex items-center gap-4 border-white/5 hover:border-white/10 transition-colors group">
-                                    <div className={`p-2 rounded-lg bg-white/5 ${stat.color} group-hover:scale-110 transition-transform`}>
-                                        <stat.icon className="w-4 h-4" />
+                                <div key={stat.label} className="team-stat glass-panel px-3 sm:px-6 py-2 sm:py-3 rounded-2xl flex items-center gap-2 sm:gap-4 border-white/5 hover:border-white/10 transition-colors group">
+                                    <div className={`p-1.5 sm:p-2 rounded-lg bg-white/5 ${stat.color} group-hover:scale-110 transition-transform`}>
+                                        <stat.icon className="w-3 h-3 sm:w-4 sm:h-4" />
                                     </div>
                                     <div className="text-left">
-                                        <div className={`text-2xl font-black font-heading leading-none ${stat.color}`}>{stat.value}</div>
-                                        <div className="text-[9px] text-gray-500 uppercase tracking-widest font-bold mt-1">{stat.label}</div>
+                                        <div className={`text-lg sm:text-2xl font-black font-heading leading-none ${stat.color}`}>{stat.value}</div>
+                                        <div className="text-[8px] sm:text-[9px] text-gray-500 uppercase tracking-widest font-bold mt-0.5 sm:mt-1">{stat.label}</div>
                                     </div>
                                 </div>
                             ))}
@@ -135,9 +135,9 @@ export default function TeamDetails() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10">
                 {/* Squad Section */}
-                <div className="lg:col-span-2">
+                <div className="md:col-span-2">
                     <div style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '24px', overflow: 'hidden' }}>
                         <div style={{ padding: '20px 28px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: '14px', background: 'rgba(255,255,255,0.02)' }}>
                             <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(56,189,248,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -147,9 +147,9 @@ export default function TeamDetails() {
                                 Franchise Squad
                             </span>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
                             {(!team.players || team.players.length === 0) ? (
-                                <div style={{ textAlign: 'center', padding: '60px 20px', color: '#555', gridColumn: '1 / -1' }}>
+                                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#555', gridColumn: '1 / -1' }}>
                                     <Users className="w-12 h-12 mx-auto mb-4 opacity-20" style={{ color: '#555' }} />
                                     <p style={{ fontSize: '10px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 700 }}>Roster synchronization pending</p>
                                 </div>
@@ -160,14 +160,16 @@ export default function TeamDetails() {
                                         key={player.id}
                                         style={{
                                             display: 'flex',
+                                            flexDirection: 'column',
                                             alignItems: 'center',
-                                            gap: '16px',
-                                            padding: '16px 24px',
+                                            gap: '8px',
+                                            padding: '12px 16px',
                                             borderBottom: '1px solid rgba(255,255,255,0.04)',
                                             borderRight: '1px solid rgba(255,255,255,0.04)',
                                             color: 'white',
                                             textDecoration: 'none',
                                             transition: 'background 0.3s',
+                                            textAlign: 'center'
                                         }}
                                         onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
                                         onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
@@ -176,28 +178,27 @@ export default function TeamDetails() {
                                             <img
                                                 src={player.profileImage || `https://ui-avatars.com/api/?name=${player.name}&background=random`}
                                                 alt={player.name}
-                                                style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.1)' }}
+                                                style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.1)' }}
                                             />
                                             {player.isCaptain && (
-                                                <div style={{ position: 'absolute', top: '-4px', right: '-4px', width: '22px', height: '22px', background: '#FFD60A', color: 'black', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 900, transform: 'rotate(12deg)', border: '2px solid #000', zIndex: 10 }}>C</div>
+                                                <div style={{ position: 'absolute', top: '-4px', right: '-4px', width: '18px', height: '18px', background: '#FFD60A', color: 'black', borderRadius: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '7px', fontWeight: 900, transform: 'rotate(12deg)', border: '2px solid #000', zIndex: 10 }}>C</div>
                                             )}
                                         </div>
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ fontWeight: 700, fontSize: '15px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        <div style={{ minWidth: 0, width: '100%' }}>
+                                            <div style={{ fontWeight: 700, fontSize: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                 {player.name}
                                             </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3px' }}>
-                                                <span style={{ fontSize: '10px', color: '#38BDF8', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px' }}>{player.role || 'PLAYER'}</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', marginTop: '3px', flexWrap: 'wrap' }}>
+                                                <span style={{ fontSize: '8px', color: '#38BDF8', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>{player.role || 'PLAYER'}</span>
                                                 {player.jerseyNumber && (
-                                                    <span style={{ fontSize: '10px', color: '#666', fontWeight: 700 }}>#{player.jerseyNumber}</span>
+                                                    <span style={{ fontSize: '8px', color: '#666', fontWeight: 700 }}>#{player.jerseyNumber}</span>
                                                 )}
                                             </div>
                                         </div>
-                                        <div style={{ textAlign: 'right', fontSize: '11px', color: '#666' }}>
-                                            <div><span style={{ color: '#fff', fontWeight: 600 }}>{player.totalRuns || 0}</span> runs</div>
-                                            <div><span style={{ color: '#fff', fontWeight: 600 }}>{player.totalWickets || 0}</span> wkts</div>
+                                        <div style={{ textAlign: 'center', fontSize: '9px', color: '#666', width: '100%' }}>
+                                            <div><span style={{ color: '#fff', fontWeight: 600, fontSize: '10px' }}>{player.totalRuns || 0}</span> <span style={{color: '#666'}}>runs</span></div>
+                                            <div><span style={{ color: '#fff', fontWeight: 600, fontSize: '10px' }}>{player.totalWickets || 0}</span> <span style={{color: '#666'}}>wkts</span></div>
                                         </div>
-                                        <ArrowRight style={{ width: '14px', height: '14px', color: '#444' }} />
                                     </Link>
                                 ))
                             )}
@@ -206,7 +207,7 @@ export default function TeamDetails() {
                 </div>
 
                 {/* Match Sidebars */}
-                <div className="space-y-8 match-sidebar">
+                <div className="space-y-6 md:space-y-8 match-sidebar">
                     {/* Live/Upcoming Matches */}
                     <Card className="glass-card border-brand-blue/10 bg-brand-blue/[0.02]">
                         <CardHeader className="border-b border-white/5 px-6 py-5">

@@ -73,10 +73,10 @@ export default function PlayerProfile() {
                 <div className="absolute inset-0 bg-gradient-to-br from-brand-blue/30 via-transparent to-brand-red/20 opacity-40" />
                 <div className="absolute inset-0 backdrop-blur-[2px]" />
 
-                <div className="relative flex flex-col md:flex-row items-center gap-10 p-10 md:p-16">
+                <div className="relative flex flex-col md:flex-row items-center gap-6 sm:gap-10 p-6 sm:p-10 md:p-16">
                     <div className="relative">
                         <div className="absolute -inset-4 rounded-full bg-gradient-to-br from-brand-blue to-brand-red blur-2xl opacity-30 animate-pulse" />
-                        <div className="relative w-40 h-40 md:w-52 md:h-52 rounded-full p-1 bg-gradient-to-br from-white/20 to-transparent">
+                        <div className="relative w-32 h-32 sm:w-40 sm:h-40 md:w-52 md:h-52 rounded-full p-1 bg-gradient-to-br from-white/20 to-transparent">
                             <img
                                 src={player.profileImage || `https://ui-avatars.com/api/?name=${player.name}&background=random&size=200`}
                                 alt={player.name}
@@ -91,20 +91,20 @@ export default function PlayerProfile() {
                     </div>
 
                     <div className="text-center md:text-left flex-1">
-                        <div className="flex flex-col md:flex-row md:items-end gap-3 mb-4">
-                            <h1 className="text-5xl md:text-7xl font-heading tracking-widest text-white uppercase neon-text-blue leading-none">
+                        <div className="flex flex-col md:flex-row md:items-end gap-2 sm:gap-3 mb-4">
+                            <h1 className="text-2xl sm:text-4xl md:text-7xl font-heading tracking-widest text-white uppercase neon-text-blue leading-none">
                                 {player.name}
                             </h1>
                             {player.jerseyNumber && (
-                                <span className="text-brand-yellow font-heading text-4xl mb-1 opacity-80">#{player.jerseyNumber}</span>
+                                <span className="text-brand-yellow font-heading text-2xl sm:text-3xl mb-1 opacity-80">#{player.jerseyNumber}</span>
                             )}
                         </div>
 
-                        <div className="flex items-center gap-4 mt-2 justify-center md:justify-start flex-wrap">
-                            <span className="bg-brand-blue/10 text-brand-blue px-5 py-1.5 rounded-full text-xs font-bold uppercase tracking-[0.2em] border border-brand-blue/30 backdrop-blur-md">
+                        <div className="flex items-center gap-2 sm:gap-4 mt-2 justify-center md:justify-start flex-wrap">
+                            <span className="bg-brand-blue/10 text-brand-blue px-3 sm:px-5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] border border-brand-blue/30 backdrop-blur-md">
                                 {player.role || 'Player'}
                             </span>
-                            <span className="text-gray-400 text-xs font-bold tracking-widest uppercase bg-white/5 px-4 py-1.5 rounded-full">{player.batch} BATCH</span>
+                            <span className="text-gray-400 text-[10px] sm:text-xs font-bold tracking-widest uppercase bg-white/5 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full">{player.batch} BATCH</span>
                             {player.status === 'activated' && (
                                 <span className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-black tracking-widest uppercase">
                                     <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
@@ -137,7 +137,7 @@ export default function PlayerProfile() {
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6 mb-12">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-6 mb-8 md:mb-12">
                 {stats.map((stat, i) => (
                     <div key={stat.label} className="stat-card">
                         <Card className="glass-card text-center hover:border-brand-blue/40 hover:-translate-y-1 transition-all duration-500 overflow-hidden group">

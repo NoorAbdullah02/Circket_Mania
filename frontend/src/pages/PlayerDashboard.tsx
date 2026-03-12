@@ -195,8 +195,8 @@ export default function PlayerDashboard() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="md:col-span-1 space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
+                <div className="sm:col-span-1 space-y-4 sm:space-y-6">
                     <Card className="glass-card text-center overflow-hidden relative dashboard-card">
                         <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-br from-brand-blue/40 to-brand-bg opacity-30 z-0" />
                         <CardContent className="pt-8 relative z-10 font-sans">

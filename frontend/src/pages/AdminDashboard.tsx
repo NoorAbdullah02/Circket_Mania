@@ -515,7 +515,7 @@ export default function AdminDashboard() {
                                 <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-brand-red" /></div>
                             ) : (
                                 <>
-                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                                         {[
                                             { label: 'Total Franchises', value: stats?.totalTeams, color: 'text-brand-blue', bg: 'bg-brand-blue/20', border: 'hover:border-brand-blue/50 hover:shadow-[0_0_30px_rgba(56,189,248,0.2)]' },
                                             { label: 'Registered Players', value: stats?.totalPlayers, color: 'text-brand-yellow', bg: 'bg-brand-yellow/20', border: 'hover:border-brand-yellow/50 hover:shadow-[0_0_30px_rgba(255,214,10,0.2)]' },
@@ -524,17 +524,17 @@ export default function AdminDashboard() {
                                         ].map((stat, i) => (
                                             <Card key={i} className={`stat-card relative bg-black/60 backdrop-blur-xl border border-white/5 rounded-3xl transition-all duration-500 overflow-hidden group ${stat.border}`}>
                                                 <div className={`absolute -inset-4 ${stat.bg} blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
-                                                <CardContent className="p-8 relative z-10">
-                                                    <p className="text-gray-500 text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">{stat.label}</p>
-                                                    <div className="flex items-baseline gap-2 mt-4">
-                                                        <p className={`text-5xl md:text-6xl font-heading tracking-widest ${stat.color} filter drop-shadow-lg`}>{stat.value || 0}</p>
+                                                <CardContent className="p-4 sm:p-8 relative z-10">
+                                                    <p className="text-gray-500 text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">{stat.label}</p>
+                                                    <div className="flex items-baseline gap-2 mt-2 sm:mt-4">
+                                                        <p className={`text-3xl sm:text-5xl md:text-6xl font-heading tracking-widest ${stat.color} filter drop-shadow-lg`}>{stat.value || 0}</p>
                                                     </div>
                                                 </CardContent>
                                             </Card>
                                         ))}
                                     </div>
 
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 mt-6 sm:mt-8">
                                         <Card className="glass-card">
                                             <CardHeader>
                                                 <CardTitle className="font-heading tracking-widest">Player Distribution</CardTitle>
@@ -790,7 +790,7 @@ export default function AdminDashboard() {
                             {loadingTeams ? (
                                 <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-brand-blue" /></div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                     {teams?.map((team: any) => (
                                         <Card key={team.id} className="relative bg-black/60 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden group transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl">
                                             <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-700 blur-3xl pointer-events-none" style={{ backgroundColor: team.color || '#38BDF8' }}></div>
