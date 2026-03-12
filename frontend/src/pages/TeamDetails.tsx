@@ -71,6 +71,17 @@ export default function TeamDetails() {
 
             {/* Team Header */}
             <div className="relative overflow-hidden rounded-[3rem] mb-12 glass-card border-none team-header">
+                {/* Cover Photo Background */}
+                {team.coverPhoto && (
+                    <div
+                        className="absolute inset-0"
+                        style={{
+                            backgroundImage: `url(${team.coverPhoto})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                        }}
+                    />
+                )}
                 <div className="absolute inset-0 opacity-10" style={{ backgroundColor: team.color || '#38BDF8' }} />
                 <div className="absolute inset-0 bg-gradient-to-br from-brand-bg/80 via-transparent to-brand-bg/80" />
 
