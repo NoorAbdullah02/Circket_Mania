@@ -89,16 +89,23 @@ export default function PointsTable() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12" ref={tableContainer}>
-            <div className="space-y-4 md:space-y-6">
-                <div className="flex items-center gap-3 sm:gap-4 mb-6 md:mb-8 flex-wrap">
-                    <div className="bg-brand-blue/20 p-2 sm:p-3 rounded-full border border-brand-blue/30">
-                        <Trophy className="w-6 h-6 sm:w-8 sm:h-8 text-brand-blue" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 relative" ref={tableContainer}>
+            {/* Background */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-0 left-0 w-[30vw] h-[30vw] bg-brand-yellow/5 rounded-full blur-[120px]" />
+                <div className="absolute bottom-0 right-0 w-[30vw] h-[30vw] bg-brand-blue/5 rounded-full blur-[100px]" />
+            </div>
+
+            <div className="space-y-4 md:space-y-6 relative z-10">
+                <div className="text-center mb-8 sm:mb-12">
+                    <div className="inline-flex items-center gap-3 glass-premium px-6 py-3 rounded-full mb-6 shadow-lg">
+                        <Trophy className="w-4 h-4 text-brand-yellow" />
+                        <span className="text-brand-yellow font-heading text-xs tracking-[0.5em] uppercase">Tournament Standings</span>
                     </div>
-                    <div>
-                        <h1 className="text-2xl sm:text-4xl font-heading tracking-widest text-white uppercase neon-text-blue">Points Table</h1>
-                        <p className="text-xs sm:text-sm text-gray-400">Current standings and NRR calculations</p>
-                    </div>
+                    <h1 className="text-4xl sm:text-5xl md:text-7xl font-heading tracking-wide text-white uppercase">
+                        Points <span className="text-brand-yellow drop-shadow-[0_0_20px_rgba(255,214,10,0.4)]">Table</span>
+                    </h1>
+                    <p className="text-gray-400 mt-4 font-light text-sm sm:text-base max-w-xl mx-auto">Current standings, net run rate calculations, and top performers.</p>
                 </div>
 
                 {/* The Grand Final Section */}
