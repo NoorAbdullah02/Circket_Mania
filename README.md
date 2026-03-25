@@ -2,7 +2,7 @@
 
 A premium, full-stack cricket tournament management system with a beautiful Grand Final championship display. Features real-time match tracking, dynamic rankings, animated tournament celebration, and a stunning "glassmorphism" aesthetic.
 
-![Version](https://img.shields.io/badge/version-2.0.1-blue.svg)
+![Version](https://img.shields.io/badge/version-2.0.2-blue.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)
 ![Status](https://img.shields.io/badge/status-Production%20Ready-brightgreen.svg)
 ![License](https://img.shields.io/badge/license-ISC-green.svg)
