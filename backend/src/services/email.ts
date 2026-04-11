@@ -281,3 +281,41 @@ export function preMatchReminderEmail(playerName: string, teamA: string, teamB: 
       `,
   };
 }
+
+export function registrationEmail(userName: string): EmailParams {
+  return {
+    to: '',
+    toName: userName,
+    subject: `✅ Welcome to ICE Cricket Mania - Registration Complete!`,
+    htmlContent: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; color: #fff; padding: 40px; border-radius: 16px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #facc15; font-size: 28px;">🏏 ICE Cricket Mania</h1>
+          <p style="color: #38bdf8; font-size: 16px;">Season 2 - Welcome!</p>
+        </div>
+        <h2 style="color: #22c55e;">✅ Registration Successful!</h2>
+        <p style="color: #e2e8f0; line-height: 1.8; font-size: 16px;">
+          Hi <strong>${userName}</strong>,
+        </p>
+        <p style="color: #e2e8f0; line-height: 1.8; font-size: 16px;">
+          Thank you for registering for <strong style="color: #facc15;">ICE Cricket Mania – Season 2</strong>! Your profile has been added to our drafting pool.
+        </p>
+        <div style="background: #1e293b; border-left: 4px solid #38bdf8; padding: 20px; border-radius: 8px; margin: 25px 0;">
+          <p style="color: #94a3b8; font-size: 14px; margin-bottom: 10px; margin-top: 0;">📋 WHAT HAPPENS NEXT?</p>
+          <ul style="color: #e2e8f0; font-size: 14px; line-height: 2; padding-left: 20px; margin: 0;">
+            <li>Admin reviews your profile</li>
+            <li>You'll be selected for a team during the draft</li>
+            <li>You'll receive an activation email with a token</li>
+            <li>Set your password to unlock your player account</li>
+            <li>Start playing in ICE Cricket Mania! 🎉</li>
+          </ul>
+        </div>
+        <p style="color: #e2e8f0; line-height: 1.8; font-size: 16px;">
+          If you have any questions, feel free to reach out to the admins. Good luck! 🏆
+        </p>
+        <hr style="border: 1px solid #1e293b; margin: 30px 0;" />
+        <p style="color: #64748b; font-size: 12px; text-align: center;">ICE Cricket Mania – Season 2 | University Tournament</p>
+      </div>
+    `,
+  };
+}

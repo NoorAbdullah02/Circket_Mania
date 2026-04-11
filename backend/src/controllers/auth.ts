@@ -5,7 +5,7 @@ import { db } from '../db/index.js';
 import { users, players } from '../db/schema.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, generateActivationToken, verifyActivationToken, generateResetToken, verifyResetToken } from '../utils/jwt.js';
 import { registerSchema, loginSchema, activateAccountSchema, forgotPasswordSchema, resetPasswordSchema } from '../schemas/validation.js';
-import { sendEmail, forgotPasswordEmail } from '../services/email.js';
+import { sendEmail, forgotPasswordEmail, registrationEmail } from '../services/email.js';
 
 // POST /auth/register — Students register freely (no token needed)
 export async function register(req: Request, res: Response): Promise<void> {
@@ -42,8 +42,13 @@ export async function register(req: Request, res: Response): Promise<void> {
             status: 'pending',
         });
 
+        // Send registration confirmation email
+        const emailParams = registrationEmail(name);
+        emailParams.to = email;
+        await sendEmail(emailParams);
+
         res.status(201).json({
-            message: 'Registration successful! Please wait for admin to select you for a team.',
+            message: 'Registration successful! Please check your email for confirmation.',
             user: { id: newUser.id, name: newUser.name, email: newUser.email },
         });
     } catch (error: any) {
@@ -178,7 +183,7 @@ export async function refreshAccessToken(req: Request, res: Response): Promise<v
         }
 
         const payload = verifyRefreshToken(refreshToken);
-        
+
         // Verify user still exists and is active
         const [user] = await db.select().from(users).where(eq(users.id, payload.userId)).limit(1);
         if (!user || !user.isActive) {
