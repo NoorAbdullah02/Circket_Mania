@@ -16,18 +16,27 @@ import uploadRoutes from './routes/upload.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+console.log(`🔧 Running in ${IS_PRODUCTION ? 'PRODUCTION' : 'DEVELOPMENT'} mode`);
 
 // CORS configuration
-const corsOrigins = process.env.NODE_ENV === 'production'
+const corsOrigins = IS_PRODUCTION
     ? [process.env.FRONTEND_URL || 'http://localhost:5173']
-    : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175']; // Allow multiple dev ports
+    : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'];
+
+console.log(`✅ Allowed CORS Origins: ${corsOrigins.join(', ')}`);
 
 app.use(cors({
     origin: (origin, callback) => {
-        if (!origin) return callback(null, true);
-        if (corsOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
-            callback(null, true);
+        // Log the origin for debugging
+        console.log(`📍 CORS Check - Origin: ${origin || 'no origin'}`);
+
+        if (!origin) return callback(null, true); // Allow requests without origin
+        if (corsOrigins.includes(origin) || !IS_PRODUCTION) {
+            callback(null, true); // Allow in dev mode or if origin matches
         } else {
+            console.error(`❌ CORS Blocked: ${origin}`);
             callback(new Error('Not allowed by CORS'));
         }
     },
@@ -36,6 +45,15 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// CSP header - allow connections to localhost and same origin
+app.use((req, res, next) => {
+    res.setHeader(
+        'Content-Security-Policy',
+        "default-src 'self'; connect-src 'self' http://localhost:* https://*.cloudinary.com https://*.neon.tech; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;"
+    );
+    next();
+});
 
 // Request logger
 app.use((req, res, next) => {
@@ -54,19 +72,21 @@ app.get('/api/health', (req, res) => {
 });
 
 
-/// For frontrend and backend in one link
+/// For frontend and backend in one link
 
-if (process.env.NODE_ENV === 'production') {
-    const __dirname = path.resolve();
+const __dirname = path.resolve();
+const distPath = path.join(__dirname, "../frontend/dist");
 
-    // server static folder run
+// Serve static files from dist
+app.use(express.static(distPath, {
+    maxAge: IS_PRODUCTION ? '1h' : 0,
+    etag: !IS_PRODUCTION
+}));
 
-    app.use(express.static(path.join(__dirname, "../frontend/dist")));
-
-    app.use((req, res) => {
-        res.sendFile(path.join(__dirname, "../frontend/dist/index.html"))
-    })
-}
+// SPA fallback - serve index.html for any route not matched by API or static files
+app.use((req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+});
 
 
 app.listen(Number(PORT), '0.0.0.0', () => {
