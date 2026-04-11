@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'path';
+import compression from 'compression';
 import { seedAdmins } from './utils/seed.js';
 
 // Ensure default admins exist
@@ -27,14 +28,26 @@ const corsOrigins = IS_PRODUCTION
 
 console.log(`✅ Allowed CORS Origins: ${corsOrigins.join(', ')}`);
 
+// Enable gzip compression for all responses
+app.use(compression({
+    level: 6,
+    threshold: 10 * 1000, // Only compress responses > 10KB
+    filter: (req: any, res: any) => {
+        if (req.headers['x-no-compression']) return false;
+        return compression.filter(req, res);
+    }
+}));
+
 app.use(cors({
     origin: (origin, callback) => {
-        // Log the origin for debugging
-        console.log(`📍 CORS Check - Origin: ${origin || 'no origin'}`);
+        // Only log in development mode
+        if (!IS_PRODUCTION) {
+            console.log(`📍 CORS Check - Origin: ${origin || 'no origin'}`);
+        }
 
-        if (!origin) return callback(null, true); // Allow requests without origin
+        if (!origin) return callback(null, true);
         if (corsOrigins.includes(origin) || !IS_PRODUCTION) {
-            callback(null, true); // Allow in dev mode or if origin matches
+            callback(null, true);
         } else {
             console.error(`❌ CORS Blocked: ${origin}`);
             callback(new Error('Not allowed by CORS'));
@@ -52,14 +65,21 @@ app.use((req, res, next) => {
         'Content-Security-Policy',
         "default-src 'self'; connect-src 'self' http://localhost:* https://*.cloudinary.com https://*.neon.tech; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;"
     );
+
+    // Add cache headers for static content
+    if (req.path.startsWith('/api/')) {
+        res.setHeader('Cache-Control', 'no-cache');
+    }
     next();
 });
 
-// Request logger
-app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-    next();
-});
+// Request logger only in development
+if (!IS_PRODUCTION) {
+    app.use((req, res, next) => {
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+        next();
+    });
+}
 
 app.use('/api/auth', authRoutes);
 app.use('/api/teams', teamRoutes);
@@ -77,14 +97,18 @@ app.get('/api/health', (req, res) => {
 const __dirname = path.resolve();
 const distPath = path.join(__dirname, "../frontend/dist");
 
-// Serve static files from dist
+// Serve static files from dist with aggressive caching
 app.use(express.static(distPath, {
-    maxAge: IS_PRODUCTION ? '1h' : 0,
-    etag: !IS_PRODUCTION
+    maxAge: IS_PRODUCTION ? '1y' : 0, // 1 year cache in production
+    etag: !IS_PRODUCTION,
+    redirect: true,
+    index: false, // Don't serve index from static middleware
+    fallthrough: true
 }));
 
 // SPA fallback - serve index.html for any route not matched by API or static files
 app.use((req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(distPath, 'index.html'));
 });
 
