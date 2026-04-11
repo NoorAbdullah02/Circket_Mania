@@ -4,7 +4,7 @@ import { authenticate } from '../middleware/auth.js';
 import { uploadFile } from '../controllers/upload.js';
 
 const storage = multer.memoryStorage();
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
+const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
 const router = Router();
 

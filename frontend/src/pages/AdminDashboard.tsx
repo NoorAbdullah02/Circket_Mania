@@ -304,6 +304,13 @@ export default function AdminDashboard() {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        // Check file size (max 10MB)
+        const maxFileSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxFileSize) {
+            toast.error('File size exceeds 10MB limit. Please upload an image up to 10 MB.');
+            return;
+        }
+
         try {
             setUploadingScoreboard(true);
             const uploadData = new FormData();
@@ -313,8 +320,9 @@ export default function AdminDashboard() {
             await api.put(`/matches/${match.id}`, { scoreboardImage: data.url });
             setScoringMatch({ ...match, scoreboardImage: data.url });
             toast.success('Scoreboard uploaded! 📸');
-        } catch (error) {
-            toast.error('Scoreboard upload failed');
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.error || 'Scoreboard upload failed';
+            toast.error(errorMsg);
         } finally {
             setUploadingScoreboard(false);
         }
@@ -323,6 +331,13 @@ export default function AdminDashboard() {
     const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, isEditing = false) => {
         const file = e.target.files?.[0];
         if (!file) return;
+
+        // Check file size (max 10MB)
+        const maxFileSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxFileSize) {
+            toast.error('File size exceeds 10MB limit. Please upload an image up to 10 MB.');
+            return;
+        }
 
         try {
             setUploadingLogo(true);
@@ -336,8 +351,9 @@ export default function AdminDashboard() {
                 setNewTeam({ ...newTeam, logo: data.url });
             }
             toast.success('Logo uploaded!');
-        } catch (error) {
-            toast.error('Logo upload failed');
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.error || 'Logo upload failed';
+            toast.error(errorMsg);
         } finally {
             setUploadingLogo(false);
         }
@@ -346,6 +362,13 @@ export default function AdminDashboard() {
     const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>, isEditing = false) => {
         const file = e.target.files?.[0];
         if (!file) return;
+
+        // Check file size (max 10MB)
+        const maxFileSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxFileSize) {
+            toast.error('File size exceeds 10MB limit. Please upload an image up to 10 MB.');
+            return;
+        }
 
         try {
             setUploadingCover(true);
@@ -359,8 +382,9 @@ export default function AdminDashboard() {
                 setNewTeam({ ...newTeam, coverPhoto: data.url });
             }
             toast.success('Cover photo uploaded!');
-        } catch (error) {
-            toast.error('Cover upload failed');
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.error || 'Cover upload failed';
+            toast.error(errorMsg);
         } finally {
             setUploadingCover(false);
         }

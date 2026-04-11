@@ -8,6 +8,13 @@ export async function uploadFile(req: Request, res: Response): Promise<void> {
             return;
         }
 
+        // Check file size (max 10MB)
+        const maxFileSize = 10 * 1024 * 1024; // 10MB in bytes
+        if (req.file.size > maxFileSize) {
+            res.status(413).json({ error: 'File size exceeds 10MB limit. Please upload an image up to 10 MB.' });
+            return;
+        }
+
         const folder = (req.query.folder as string) || 'general';
 
         // Upload exclusively to Cloudinary
