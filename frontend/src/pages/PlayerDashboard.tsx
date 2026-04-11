@@ -102,6 +102,7 @@ export default function PlayerDashboard() {
             formData.append('file', file);
             const { data } = await api.post('/upload?folder=players', formData);
 
+            toast.success('Photo uploaded successfully! ✓');
             updateProfileMutation.mutate({ profileImage: data.url });
         } catch (error) {
             toast.error('Image upload failed');
@@ -206,9 +207,12 @@ export default function PlayerDashboard() {
                                     alt="Profile"
                                     className="w-full h-full rounded-full object-cover border-4 border-brand-bg relative z-10 glass-panel group-hover:scale-105 transition-transform duration-500"
                                 />
-                                <label className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 rounded-full cursor-pointer transition-opacity backdrop-blur-sm">
-                                    {uploading ? <Loader2 className="w-6 h-6 animate-spin text-brand-yellow" /> : <Camera className="w-8 h-8 text-white mb-1" />}
-                                    <span className="text-[10px] font-bold text-white uppercase tracking-widest">Update Photo</span>
+                                <label
+                                    className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 rounded-full cursor-pointer transition-opacity backdrop-blur-sm opacity-0 group-hover:opacity-100"
+                                    style={{ opacity: uploading ? 1 : undefined }}
+                                >
+                                    {uploading ? <Loader2 className="w-8 h-8 animate-spin text-brand-yellow drop-shadow-[0_0_10px_rgba(255,214,10,0.6)]" /> : <Camera className="w-8 h-8 text-white mb-1" />}
+                                    <span className="text-[10px] font-bold text-white uppercase tracking-widest">{uploading ? 'Uploading...' : 'Update Photo'}</span>
                                     <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
                                 </label>
                             </div>
@@ -316,7 +320,7 @@ export default function PlayerDashboard() {
                                         rows={4}
                                         value={formData.bio}
                                         onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                                        className="flex w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:outline-none focus:border-brand-blue transition-all resize-none placeholder:text-gray-600"
+                                        className="flex w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:outline-none focus:border-brand-blue transition-all resize-none placeholder:text-gray-400"
                                         placeholder="Describe your style, favorite shots, and cricketing philosophy..."
                                     />
                                 </div>

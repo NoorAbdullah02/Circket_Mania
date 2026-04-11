@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Loader2, ArrowLeft, Shield, Sparkles } from 'lucide-react';
+import { Mail, Lock, Loader2, ArrowLeft, Shield, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import api from '../api/client';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/card';
@@ -15,6 +15,7 @@ import { useGSAP } from '@gsap/react';
 export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const container = useRef<HTMLDivElement>(null);
     const hasAnimated = useRef(false);
@@ -124,7 +125,7 @@ export default function Login() {
                                         placeholder="player@university.edu"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="pl-10 h-10 sm:h-12 bg-white/[0.02] border-white/[0.08] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/30 text-white rounded-xl placeholder:text-gray-600 transition-all shadow-inner text-sm focus:bg-white/[0.04]"
+                                        className="pl-10 h-10 sm:h-12 bg-white/[0.02] border-white/[0.08] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/30 text-white rounded-xl placeholder:text-gray-400 transition-all shadow-inner text-sm focus:bg-white/[0.04]"
                                     />
                                 </div>
                             </div>
@@ -140,12 +141,19 @@ export default function Login() {
                                     <Lock className="absolute left-4 top-2.5 sm:top-3 h-4 w-4 sm:h-5 sm:w-5 text-brand-red/30 group-focus-within:text-brand-red transition-colors" />
                                     <Input
                                         id="password"
-                                        type="password"
+                                        type={showPassword ? 'text' : 'password'}
                                         placeholder="••••••••"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="pl-10 h-10 sm:h-12 bg-white/[0.02] border-white/[0.08] focus:border-brand-red focus:ring-1 focus:ring-brand-red/30 text-white rounded-xl placeholder:text-gray-600 transition-all shadow-inner tracking-widest text-sm focus:bg-white/[0.04]"
+                                        className="pl-10 pr-12 h-10 sm:h-12 bg-white/[0.02] border-white/[0.08] focus:border-brand-red focus:ring-1 focus:ring-brand-red/30 text-white rounded-xl placeholder:text-gray-400 transition-all shadow-inner tracking-widest text-sm focus:bg-white/[0.04]"
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-2.5 sm:top-3 text-gray-500 hover:text-brand-red transition-colors"
+                                    >
+                                        {showPassword ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5" />}
+                                    </button>
                                 </div>
                             </div>
 

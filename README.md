@@ -1,13 +1,13 @@
-# 🏏 Cricket Mania - Grand Final Tournament Championship Display
+# 🏏 Cricket Mania - Tournament Management System
 
-A premium, full-stack cricket tournament management system with a beautiful Grand Final championship display. Features real-time match tracking, dynamic rankings, animated tournament celebration, and a stunning "glassmorphism" aesthetic.
+A premium, full-stack cricket tournament management system with real-time match tracking, dynamic rankings, player management, and beautiful UI. Designed for university-level cricket tournaments with professional-grade features.
 
-![Version](https://img.shields.io/badge/version-2.0.2-blue.svg)
+![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)
 ![Status](https://img.shields.io/badge/status-Production%20Ready-brightgreen.svg)
 ![License](https://img.shields.io/badge/license-ISC-green.svg)
 
-**Tagline**: *"Tournament Champions Celebrated with Style"* 🏆
+**Tagline**: *"Professional Cricket Tournament Management Platform"* 🏆
 
 ---
 

@@ -47,7 +47,7 @@ export default function Register() {
             uploadData.append('file', file);
             const { data } = await api.post('/upload/public?folder=players', uploadData);
             setFormData(prev => ({ ...prev, profileImage: data.url }));
-            toast.success('Photo uploaded!');
+            toast.success('Photo uploaded successfully! ✓');
         } catch (error) {
             console.error('Upload error:', error);
             toast.error('Photo upload failed');
@@ -161,9 +161,12 @@ export default function Register() {
                                     ) : (
                                         <User className="w-12 h-12 text-gray-500 group-hover/photo:text-brand-blue transition-colors" />
                                     )}
-                                    <label className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover/photo:opacity-100 cursor-pointer transition-all duration-300 backdrop-blur-sm">
-                                        {uploading ? <Loader2 className="w-6 h-6 animate-spin text-brand-yellow" /> : <Camera className="w-8 h-8 text-white scale-90 group-hover/photo:scale-100 transition-transform" />}
-                                        <span className="text-[10px] text-white uppercase font-bold mt-2 tracking-widest leading-tight">Upload<br />Photo</span>
+                                    <label
+                                        className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 backdrop-blur-sm opacity-0 group-hover/photo:opacity-100"
+                                        style={{ opacity: uploading ? 1 : undefined }}
+                                    >
+                                        {uploading ? <Loader2 className="w-8 h-8 animate-spin text-brand-yellow drop-shadow-[0_0_10px_rgba(255,214,10,0.6)]" /> : <Camera className="w-8 h-8 text-white scale-90 group-hover/photo:scale-100 transition-transform" />}
+                                        <span className="text-[10px] text-white uppercase font-bold mt-2 tracking-widest leading-tight">{uploading ? 'Uploading...' : 'Upload'}<br />Photo</span>
                                         <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={uploading} />
                                     </label>
                                 </div>
@@ -181,7 +184,7 @@ export default function Register() {
                                         placeholder="Your Full Name"
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        className="pl-12 h-12 w-full bg-white/[0.02] border-white/[0.08] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/30 text-white rounded-xl placeholder:text-gray-600 shadow-inner transition-all focus:bg-white/[0.04]"
+                                        className="pl-12 h-12 w-full bg-white/[0.02] border-white/[0.08] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/30 text-white rounded-xl placeholder:text-gray-400 shadow-inner transition-all focus:bg-white/[0.04]"
                                     />
                                 </div>
                             </div>
@@ -196,7 +199,7 @@ export default function Register() {
                                         placeholder="player@university.edu"
                                         value={formData.email}
                                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                        className="pl-12 h-12 w-full bg-white/[0.02] border-white/[0.08] focus:border-brand-red focus:ring-1 focus:ring-brand-red/30 text-white rounded-xl placeholder:text-gray-600 shadow-inner transition-all focus:bg-white/[0.04]"
+                                        className="pl-12 h-12 w-full bg-white/[0.02] border-white/[0.08] focus:border-brand-red focus:ring-1 focus:ring-brand-red/30 text-white rounded-xl placeholder:text-gray-400 shadow-inner transition-all focus:bg-white/[0.04]"
                                     />
                                 </div>
                             </div>
@@ -210,7 +213,7 @@ export default function Register() {
                                         onChange={(e) => setFormData({ ...formData, batch: e.target.value })}
                                         className="flex h-12 w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-2 text-sm text-white focus-visible:outline-none focus:border-brand-yellow focus-visible:ring-1 focus-visible:ring-brand-yellow/30 shadow-inner transition-all appearance-none uppercase tracking-wider focus:bg-white/[0.04]"
                                     >
-                                        {['ICE', 'ICT', '13th', '14th', '15th', '16th', '17th', '18th', '19th', '20th', '21st', '22nd', '23rd', '24th'].map(b => (
+                                        {['13th', '14th', '15th', '16th', '17th', '18th', '19th', '20th', '21st', '22nd', '23rd', '24th'].map(b => (
                                             <option key={b} value={b} className="bg-[#111827] text-white py-2 uppercase">
                                                 {['ICE', 'ICT'].includes(b) ? b : `${b} Batch`}
                                             </option>
@@ -242,7 +245,7 @@ export default function Register() {
                                         placeholder="01712345678"
                                         value={formData.phone}
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                        className="pl-12 h-12 w-full bg-white/[0.02] border-white/[0.08] focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow/30 text-white rounded-xl placeholder:text-gray-600 shadow-inner transition-all tracking-widest focus:bg-white/[0.04]"
+                                        className="pl-12 h-12 w-full bg-white/[0.02] border-white/[0.08] focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow/30 text-white rounded-xl placeholder:text-gray-400 shadow-inner transition-all tracking-widest focus:bg-white/[0.04]"
                                     />
                                 </div>
                             </div>
