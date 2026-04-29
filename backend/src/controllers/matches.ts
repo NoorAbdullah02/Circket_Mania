@@ -468,8 +468,21 @@ export async function recalculatePointsTable() {
                 if (!score) continue;
 
                 const isTeamA = match.teamAId === team.id;
-                const teamRuns = isTeamA ? (score.teamARuns || 0) : (score.teamBRuns || 0);
-                const oppRuns = isTeamA ? (score.teamBRuns || 0) : (score.teamARuns || 0);
+                let teamRuns = isTeamA ? (score.teamARuns || 0) : (score.teamBRuns || 0);
+                let oppRuns = isTeamA ? (score.teamBRuns || 0) : (score.teamARuns || 0);
+
+                // Handle Super Over tie-breakers for NRR
+                // In a tie where there is a clear winner (Super Over), we add 1 run difference 
+                // so the winner gets a positive NRR boost
+                if (match.status === 'completed' && match.winnerTeamId && score.teamARuns === score.teamBRuns) {
+                    if (match.winnerTeamId === team.id) {
+                        teamRuns += 1;
+                        console.log(`   [Super Over NRR Boost] +1 run to ${team.name}`);
+                    } else {
+                        oppRuns += 1;
+                        console.log(`   [Super Over NRR Penalty] +1 run conceded by ${team.name}`);
+                    }
+                }
                 const teamWickets = isTeamA ? (score.teamAWickets || 0) : (score.teamBWickets || 0);
                 const oppWickets = isTeamA ? (score.teamBWickets || 0) : (score.teamAWickets || 0);
                 const teamOversActual = isTeamA ? (score.teamAOversPlayed || 0) : (score.teamBOversPlayed || 0);
@@ -494,9 +507,19 @@ export async function recalculatePointsTable() {
                 }
 
                 // NRR components
-                // If all out, use full quota. Otherwise use actual overs.
-                const teamEffectiveOvers = (teamWickets >= allOutWickets) ? matchOverQuota : toDecimalOvers(teamOversActual);
-                const oppEffectiveOvers = (oppWickets >= allOutWickets) ? matchOverQuota : toDecimalOvers(oppOversActual);
+                // If all out, use full quota. If overs are 0 but match is completed with runs, use full quota as fallback.
+                let teamEffectiveOvers = (teamWickets >= allOutWickets) ? matchOverQuota : toDecimalOvers(teamOversActual);
+                let oppEffectiveOvers = (oppWickets >= allOutWickets) ? matchOverQuota : toDecimalOvers(oppOversActual);
+
+                // Fallback: if overs are 0 but runs exist (admin didn't enter overs), use match quota
+                if (teamEffectiveOvers === 0 && teamRuns > 0) {
+                    teamEffectiveOvers = matchOverQuota;
+                    console.log(`   [NRR Fallback] ${team.name} batting overs was 0 with ${teamRuns} runs, using match quota ${matchOverQuota}`);
+                }
+                if (oppEffectiveOvers === 0 && oppRuns > 0) {
+                    oppEffectiveOvers = matchOverQuota;
+                    console.log(`   [NRR Fallback] ${team.name} bowling overs was 0 with ${oppRuns} opponent runs, using match quota ${matchOverQuota}`);
+                }
 
                 stats.totalRunsScored += Number(teamRuns || 0);
                 stats.totalOversPlayed += Number(teamEffectiveOvers || 0);
@@ -591,7 +614,9 @@ export async function completeMatch(req: Request, res: Response): Promise<void> 
             manOfTheMatch: manOfTheMatch || null,
         }).where(eq(matches.id, id));
 
+        // Recalculate both points table and player stats
         await recalculatePointsTable();
+        await recalculatePlayerStats();
 
         // Send results email to all players from both teams
         try {
@@ -1181,6 +1206,9 @@ export async function updateMatchPlayerStats(req: Request, res: Response): Promi
             }
         }
 
+        // Recalculate points table to ensure NRR is updated
+        await recalculatePointsTable();
+
         res.json({ message: 'Stats updated successfully' });
     } catch (error) {
         console.error('Failed to update match player stats:', error);
@@ -1428,5 +1456,172 @@ export async function deleteFinalMatch(req: Request, res: Response): Promise<voi
     } catch (error) {
         console.error('Delete final match error:', error);
         res.status(500).json({ error: 'Failed to delete final match' });
+    }
+}
+
+/**
+ * Recalculate all player stats from match player stats
+ * This should be called after match player stats are updated
+ */
+export async function recalculatePlayerStats() {
+    try {
+        console.log('🔄 Recalculating all player statistics...');
+        const allPlayers = await db.select({ id: players.id }).from(players);
+
+        for (const player of allPlayers) {
+            const playerMatches = await db.select().from(matchPlayerStats).where(eq(matchPlayerStats.playerId, player.id));
+
+            const totalRuns = playerMatches.reduce((acc, curr) => acc + (curr.runsScored || 0), 0);
+            const totalWickets = playerMatches.reduce((acc, curr) => acc + (curr.wickets || 0), 0);
+            const totalBallsFaced = playerMatches.reduce((acc, curr) => acc + (curr.ballsFaced || 0), 0);
+            const totalBallsBowled = playerMatches.reduce((acc, curr) => acc + (curr.ballsBowled || 0), 0);
+            const totalRunsConceded = playerMatches.reduce((acc, curr) => acc + (curr.runsConceded || 0), 0);
+            const totalSixes = playerMatches.reduce((acc, curr) => acc + (curr.sixes || 0), 0);
+            const totalFours = playerMatches.reduce((acc, curr) => acc + (curr.fours || 0), 0);
+            const totalCatches = playerMatches.reduce((acc, curr) => acc + (curr.catches || 0), 0);
+            const matchesPlayed = playerMatches.length;
+
+            await db.update(players).set({
+                totalRuns,
+                totalWickets,
+                totalBallsFaced,
+                totalBallsBowled,
+                totalRunsConceded,
+                totalSixes,
+                totalFours,
+                totalCatches,
+                matchesPlayed
+            }).where(eq(players.id, player.id));
+
+            if (playerMatches.length > 0) {
+                console.log(`✅ ${player.id}: Updated stats - Runs: ${totalRuns}, Wickets: ${totalWickets}, Matches: ${matchesPlayed}`);
+            }
+        }
+        console.log('✅ All player statistics recalculated');
+    } catch (error) {
+        console.error('Failed to recalculate player stats:', error);
+    }
+}
+
+/**
+ * API endpoint to manually trigger player stats recalculation
+ */
+export async function triggerPlayerStatsRecalculation(req: Request, res: Response): Promise<void> {
+    try {
+        await recalculatePlayerStats();
+        res.json({ message: 'Player statistics recalculated successfully' });
+    } catch (error) {
+        console.error('Failed to recalculate player stats:', error);
+        res.status(500).json({ error: 'Failed to recalculate player statistics' });
+    }
+}
+
+/**
+ * Auto-generate match player stats from match scores (for testing/demo purposes)
+ * Creates stat entries for all players based on score distribution
+ */
+export async function autoGenerateMatchPlayerStats(req: Request, res: Response): Promise<void> {
+    try {
+        console.log('🎯 Auto-generating match player stats from scores...');
+
+        // Get all completed matches
+        const allMatches = await db.select().from(matches).where(eq(matches.status, 'completed'));
+
+        let totalStatsCreated = 0;
+
+        for (const match of allMatches) {
+            // Check if stats already exist for this match
+            const existingStats = await db.select().from(matchPlayerStats).where(eq(matchPlayerStats.matchId, match.id));
+            if (existingStats.length > 0) {
+                console.log(`⏭️ Match ${match.id} already has stats, skipping...`);
+                continue;
+            }
+
+            // Get match score
+            const [score] = await db.select().from(scores).where(eq(scores.matchId, match.id)).limit(1);
+            if (!score) continue;
+
+            // Get both teams' players
+            const teamAPlayers = await db.select({ id: players.id, teamId: players.teamId })
+                .from(players).where(eq(players.teamId, match.teamAId));
+            const teamBPlayers = await db.select({ id: players.id, teamId: players.teamId })
+                .from(players).where(eq(players.teamId, match.teamBId));
+
+            const statEntries: any[] = [];
+
+            // Distribute team A runs among team A players (distribute 30% to first half, 70% to second half)
+            const teamARuns = score.teamARuns || 0;
+            const topBatsman = Math.ceil(teamAPlayers.length / 3);
+            const runsPerTopBatsman = Math.floor(teamARuns * 0.7 / Math.max(topBatsman, 1));
+            const runsPerOtherBatsman = Math.floor(teamARuns * 0.3 / Math.max(teamAPlayers.length - topBatsman, 1));
+
+            teamAPlayers.forEach((p, i) => {
+                const isTopBatsman = i < topBatsman;
+                const runsScored = isTopBatsman ? runsPerTopBatsman : runsPerOtherBatsman;
+                const ballsFaced = runsScored > 0 ? Math.ceil(runsScored / 1.5) : 0; // Assume ~1.5 SR
+
+                statEntries.push({
+                    matchId: match.id,
+                    playerId: p.id,
+                    teamId: p.teamId,
+                    runsScored: runsScored,
+                    ballsFaced: ballsFaced,
+                    fours: Math.floor(runsScored / 4),
+                    sixes: Math.floor(runsScored / 6),
+                    wickets: 0,
+                    runsConceded: 0,
+                    ballsBowled: 0,
+                    catches: Math.floor(Math.random() * 2), // 0 or 1 catches
+                });
+            });
+
+            // Distribute team B runs among team B players
+            const teamBRuns = score.teamBRuns || 0;
+            const topBatsmenB = Math.ceil(teamBPlayers.length / 3);
+            const runsPerTopBatsmanB = Math.floor(teamBRuns * 0.7 / Math.max(topBatsmenB, 1));
+            const runsPerOtherBatsmanB = Math.floor(teamBRuns * 0.3 / Math.max(teamBPlayers.length - topBatsmenB, 1));
+
+            teamBPlayers.forEach((p, i) => {
+                const isTopBatsman = i < topBatsmenB;
+                const runsScored = isTopBatsman ? runsPerTopBatsmanB : runsPerOtherBatsmanB;
+                const ballsFaced = runsScored > 0 ? Math.ceil(runsScored / 1.5) : 0;
+
+                statEntries.push({
+                    matchId: match.id,
+                    playerId: p.id,
+                    teamId: p.teamId,
+                    runsScored: runsScored,
+                    ballsFaced: ballsFaced,
+                    fours: Math.floor(runsScored / 4),
+                    sixes: Math.floor(runsScored / 6),
+                    wickets: score.teamAWickets ? Math.floor(Math.random() * (score.teamAWickets / 3)) : 0,
+                    runsConceded: score.teamARuns ? Math.floor(Math.random() * (score.teamARuns / 5)) : 0,
+                    ballsBowled: 30, // Assume each bowler bowls 30 balls
+                    catches: Math.floor(Math.random() * 2),
+                });
+            });
+
+            // Insert all stats for this match
+            if (statEntries.length > 0) {
+                try {
+                    await db.insert(matchPlayerStats).values(statEntries);
+                    totalStatsCreated += statEntries.length;
+                    console.log(`✅ Created ${statEntries.length} stats for match ${match.id}`);
+                } catch (err) {
+                    console.error(`Failed to insert stats for match ${match.id}:`, err);
+                }
+            }
+        }
+
+        // Recalculate all player stats
+        await recalculatePlayerStats();
+
+        res.json({
+            message: `Successfully auto-generated ${totalStatsCreated} match player stats and recalculated player totals`,
+            statsCreated: totalStatsCreated
+        });
+    } catch (error) {
+        console.error('Failed to auto-generate match player stats:', error);
+        res.status(500).json({ error: 'Failed to auto-generate match player stats' });
     }
 }

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { eq, like, or, and, ilike, sql } from 'drizzle-orm';
+import { eq, like, or, and, ilike, sql, inArray } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { users, players, teams } from '../db/schema.js';
+import { users, players, teams, matchPlayerStats } from '../db/schema.js';
 import { updateProfileSchema, bulkSelectPlayersSchema } from '../schemas/validation.js';
 import { sendEmail, playerSelectedEmail, captainSelectedEmail } from '../services/email.js';
 import { generateActivationToken } from '../utils/jwt.js';
@@ -560,6 +560,7 @@ export async function bulkAction(req: Request, res: Response): Promise<void> {
 
 export async function getLeaderboard(req: Request, res: Response): Promise<void> {
     try {
+        // Include both 'activated' and 'selected' players so team-assigned players show up
         const allPlayers = await db
             .select({
                 id: players.id,
@@ -580,17 +581,46 @@ export async function getLeaderboard(req: Request, res: Response): Promise<void>
             })
             .from(players)
             .innerJoin(users, eq(players.userId, users.id))
-            .where(eq(players.status, 'activated'));
+            .where(inArray(players.status, ['activated', 'selected']));
 
         const teamsMap: Record<string, string> = {};
         const allTeams = await db.select().from(teams);
         allTeams.forEach(t => { teamsMap[t.id] = t.name; });
 
-        const playersWithTeam = allPlayers.map(p => ({
-            ...p,
-            teamName: p.teamId ? teamsMap[p.teamId] || 'Unknown' : 'Unassigned',
-            strikeRate: p.totalBallsFaced > 0 ? ((p.totalRuns / p.totalBallsFaced) * 100).toFixed(2) : '0.00',
-            economyRate: p.totalBallsBowled > 0 ? ((p.totalRunsConceded / (p.totalBallsBowled / 6))).toFixed(2) : '0.00',
+        // For each player, if their totals are all 0, try to compute from matchPlayerStats
+        const playersWithTeam = await Promise.all(allPlayers.map(async (p) => {
+            let { totalRuns, totalWickets, totalSixes, totalFours, totalCatches, totalBallsFaced, totalBallsBowled, totalRunsConceded, matchesPlayed } = p;
+
+            // If all stats are 0, try to recompute from matchPlayerStats
+            if (totalRuns === 0 && totalWickets === 0 && totalCatches === 0) {
+                const playerMatchStats = await db.select().from(matchPlayerStats).where(eq(matchPlayerStats.playerId, p.id));
+                if (playerMatchStats.length > 0) {
+                    totalRuns = playerMatchStats.reduce((acc, curr) => acc + (curr.runsScored || 0), 0);
+                    totalWickets = playerMatchStats.reduce((acc, curr) => acc + (curr.wickets || 0), 0);
+                    totalSixes = playerMatchStats.reduce((acc, curr) => acc + (curr.sixes || 0), 0);
+                    totalFours = playerMatchStats.reduce((acc, curr) => acc + (curr.fours || 0), 0);
+                    totalCatches = playerMatchStats.reduce((acc, curr) => acc + (curr.catches || 0), 0);
+                    totalBallsFaced = playerMatchStats.reduce((acc, curr) => acc + (curr.ballsFaced || 0), 0);
+                    totalBallsBowled = playerMatchStats.reduce((acc, curr) => acc + (curr.ballsBowled || 0), 0);
+                    totalRunsConceded = playerMatchStats.reduce((acc, curr) => acc + (curr.runsConceded || 0), 0);
+                    matchesPlayed = playerMatchStats.length;
+
+                    // Also update the players table so next time it's correct
+                    await db.update(players).set({
+                        totalRuns, totalWickets, totalSixes, totalFours, totalCatches,
+                        totalBallsFaced, totalBallsBowled, totalRunsConceded, matchesPlayed
+                    }).where(eq(players.id, p.id));
+                }
+            }
+
+            return {
+                ...p,
+                totalRuns, totalWickets, totalSixes, totalFours, totalCatches,
+                totalBallsFaced, totalBallsBowled, totalRunsConceded, matchesPlayed,
+                teamName: p.teamId ? teamsMap[p.teamId] || 'Unknown' : 'Unassigned',
+                strikeRate: totalBallsFaced > 0 ? ((totalRuns / totalBallsFaced) * 100).toFixed(2) : '0.00',
+                economyRate: totalBallsBowled > 0 ? ((totalRunsConceded / (totalBallsBowled / 6))).toFixed(2) : '0.00',
+            };
         }));
 
         const topBatsmen = [...playersWithTeam].sort((a, b) => b.totalRuns - a.totalRuns).slice(0, 10);
@@ -599,12 +629,14 @@ export async function getLeaderboard(req: Request, res: Response): Promise<void>
 
         res.json({ topBatsmen, topBowlers, topSixes, allPlayers: playersWithTeam });
     } catch (error) {
+        console.error('Failed to get leaderboard:', error);
         res.status(500).json({ error: 'Failed to get leaderboard' });
     }
 }
 
 export async function getPlayerOfTheSeries(req: Request, res: Response): Promise<void> {
     try {
+        // Include both 'activated' and 'selected' players
         const allPlayers = await db
             .select({
                 id: players.id,
@@ -632,7 +664,7 @@ export async function getPlayerOfTheSeries(req: Request, res: Response): Promise
             })
             .from(players)
             .innerJoin(users, eq(players.userId, users.id))
-            .where(eq(players.status, 'activated'));
+            .where(inArray(players.status, ['activated', 'selected']));
 
         if (allPlayers.length === 0) {
             res.json(null);
@@ -656,18 +688,44 @@ export async function getPlayerOfTheSeries(req: Request, res: Response): Promise
         // Catches = 10 pts
         // Sixes = Additional 2 pts
         // Fours = Additional 1 pt
-        const rankedPlayers = allPlayers.map(p => {
-            const points = (p.totalRuns || 0) +
-                ((p.totalWickets || 0) * 25) +
-                ((p.totalCatches || 0) * 10) +
-                ((p.totalSixes || 0) * 2) +
-                ((p.totalFours || 0) * 1);
+        const rankedPlayers = await Promise.all(allPlayers.map(async (p) => {
+            let { totalRuns, totalWickets, totalCatches, totalSixes, totalFours, matchesPlayed } = p;
+
+            // If all stats are 0, try to recompute from matchPlayerStats
+            if (totalRuns === 0 && totalWickets === 0 && totalCatches === 0) {
+                const playerMatchStats = await db.select().from(matchPlayerStats).where(eq(matchPlayerStats.playerId, p.id));
+                if (playerMatchStats.length > 0) {
+                    totalRuns = playerMatchStats.reduce((acc, curr) => acc + (curr.runsScored || 0), 0);
+                    totalWickets = playerMatchStats.reduce((acc, curr) => acc + (curr.wickets || 0), 0);
+                    totalCatches = playerMatchStats.reduce((acc, curr) => acc + (curr.catches || 0), 0);
+                    totalSixes = playerMatchStats.reduce((acc, curr) => acc + (curr.sixes || 0), 0);
+                    totalFours = playerMatchStats.reduce((acc, curr) => acc + (curr.fours || 0), 0);
+                    matchesPlayed = playerMatchStats.length;
+
+                    // Also update the players table so next time it's correct
+                    await db.update(players).set({
+                        totalRuns, totalWickets, totalCatches, totalSixes, totalFours, matchesPlayed,
+                        totalBallsFaced: playerMatchStats.reduce((acc, curr) => acc + (curr.ballsFaced || 0), 0),
+                        totalBallsBowled: playerMatchStats.reduce((acc, curr) => acc + (curr.ballsBowled || 0), 0),
+                        totalRunsConceded: playerMatchStats.reduce((acc, curr) => acc + (curr.runsConceded || 0), 0),
+                    }).where(eq(players.id, p.id));
+                }
+            }
+
+            const points = (totalRuns || 0) +
+                ((totalWickets || 0) * 25) +
+                ((totalCatches || 0) * 10) +
+                ((totalSixes || 0) * 2) +
+                ((totalFours || 0) * 1);
             return {
                 ...p,
+                totalRuns, totalWickets, totalCatches, totalSixes, totalFours, matchesPlayed,
                 teamName: p.teamId ? teamsMap[p.teamId]?.name : 'Unknown',
                 points
             };
-        }).sort((a, b) => b.points - a.points);
+        }));
+
+        rankedPlayers.sort((a, b) => b.points - a.points);
 
         res.json(rankedPlayers[0]); // Return the top player
     } catch (error) {

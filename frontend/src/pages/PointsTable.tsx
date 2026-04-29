@@ -412,8 +412,8 @@ export default function PointsTable() {
                                                     {row.points}
                                                 </span>
                                             </td>
-                                            <td className="px-2 sm:px-6 py-2 sm:py-4 text-center text-gray-300 font-bold text-sm sm:text-base">
-                                                {row.nrr > 0 ? `+${row.nrr.toFixed(2)}` : row.nrr.toFixed(2)}
+                                            <td className={`px-2 sm:px-6 py-2 sm:py-4 text-center font-bold text-sm sm:text-base ${row.nrr > 0 ? 'text-emerald-400' : row.nrr < 0 ? 'text-brand-red' : 'text-gray-400'}`}>
+                                                {row.nrr > 0 ? `+${row.nrr.toFixed(3)}` : row.nrr === 0 ? '0.000' : row.nrr.toFixed(3)}
                                             </td>
                                         </tr>
                                     );
