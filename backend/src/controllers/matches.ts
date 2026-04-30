@@ -506,7 +506,6 @@ export async function recalculatePointsTable() {
                     stats.points += pointsPerNoResult;
                 }
 
-                // NRR components
                 // If all out, use full quota. If overs are 0 but match is completed with runs, use full quota as fallback.
                 let teamEffectiveOvers = (teamWickets >= allOutWickets) ? matchOverQuota : toDecimalOvers(teamOversActual);
                 let oppEffectiveOvers = (oppWickets >= allOutWickets) ? matchOverQuota : toDecimalOvers(oppOversActual);
@@ -514,11 +513,11 @@ export async function recalculatePointsTable() {
                 // Fallback: if overs are 0 but runs exist (admin didn't enter overs), use match quota
                 if (teamEffectiveOvers === 0 && teamRuns > 0) {
                     teamEffectiveOvers = matchOverQuota;
-                    console.log(`   [NRR Fallback] ${team.name} batting overs was 0 with ${teamRuns} runs, using match quota ${matchOverQuota}`);
+                    console.log(`   [Fallback] ${team.name} batting overs was 0 with ${teamRuns} runs, using match quota ${matchOverQuota}`);
                 }
                 if (oppEffectiveOvers === 0 && oppRuns > 0) {
                     oppEffectiveOvers = matchOverQuota;
-                    console.log(`   [NRR Fallback] ${team.name} bowling overs was 0 with ${oppRuns} opponent runs, using match quota ${matchOverQuota}`);
+                    console.log(`   [Fallback] ${team.name} bowling overs was 0 with ${oppRuns} opponent runs, using match quota ${matchOverQuota}`);
                 }
 
                 stats.totalRunsScored += Number(teamRuns || 0);
@@ -529,27 +528,14 @@ export async function recalculatePointsTable() {
                 console.log(`   [Match ${match.id}] ${team.name}: ${teamRuns}/${teamWickets} in ${teamEffectiveOvers} overs (Opp: ${oppRuns}/${oppWickets} in ${oppEffectiveOvers})`);
             }
 
-            // Calculate final NRR
-            let finalNrr = 0;
             console.log(`   [Debug] ${team.name} final totals: Scored=${stats.totalRunsScored}, Played=${stats.totalOversPlayed}, Conceded=${stats.totalRunsConceded}, Bowled=${stats.totalOversBowled}`);
 
-            if (stats.totalOversPlayed > 0 && stats.totalOversBowled > 0) {
-                const scoredRR = stats.totalRunsScored / stats.totalOversPlayed;
-                const concededRR = stats.totalRunsConceded / stats.totalOversBowled;
-                finalNrr = scoredRR - concededRR;
-                console.log(`   [Recalc] ${team.name}: ScoredRR=${scoredRR.toFixed(3)}, ConcededRR=${concededRR.toFixed(3)}, NRR=${finalNrr.toFixed(3)}`);
-            } else {
-                console.log(`   [Recalc] ${team.name}: Overs played/bowled is 0 or NaN, skipping NRR calculation`);
-            }
-
-            // Final NaN check
-            if (isNaN(finalNrr)) finalNrr = 0;
             stats.totalRunsScored = stats.totalRunsScored || 0;
             stats.totalOversPlayed = stats.totalOversPlayed || 0;
             stats.totalRunsConceded = stats.totalRunsConceded || 0;
             stats.totalOversBowled = stats.totalOversBowled || 0;
 
-            console.log(`✅ Updated Points Table for ${team.name}: P=${stats.played} W=${stats.wins} NRR=${finalNrr.toFixed(3)}`);
+            console.log(`✅ Updated Points Table for ${team.name}: P=${stats.played} W=${stats.wins}`);
 
             await db.insert(pointsTable)
                 .values({
@@ -558,7 +544,6 @@ export async function recalculatePointsTable() {
                     wins: stats.wins,
                     losses: stats.losses,
                     points: stats.points,
-                    nrr: finalNrr,
                     totalRunsScored: stats.totalRunsScored,
                     totalOversPlayed: stats.totalOversPlayed,
                     totalRunsConceded: stats.totalRunsConceded,
@@ -571,7 +556,6 @@ export async function recalculatePointsTable() {
                         wins: stats.wins,
                         losses: stats.losses,
                         points: stats.points,
-                        nrr: finalNrr,
                         totalRunsScored: stats.totalRunsScored,
                         totalOversPlayed: stats.totalOversPlayed,
                         totalRunsConceded: stats.totalRunsConceded,
@@ -882,8 +866,7 @@ export async function getPointsTable(req: Request, res: Response): Promise<void>
         );
 
         pointsWithTeams.sort((a, b) => {
-            if (b.points !== a.points) return b.points - a.points;
-            return b.nrr - a.nrr;
+            return b.points - a.points;
         });
 
         res.json(pointsWithTeams);
@@ -991,7 +974,6 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
                     wins: pointsTable.wins,
                     losses: pointsTable.losses,
                     points: pointsTable.points,
-                    nrr: pointsTable.nrr,
                     totalRunsScored: pointsTable.totalRunsScored,
                 }).from(pointsTable).where(eq(pointsTable.teamId, team.id)).limit(1);
                 return {
@@ -999,7 +981,6 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
                     wins: pts?.wins || 0,
                     losses: pts?.losses || 0,
                     points: pts?.points || 0,
-                    nrr: pts?.nrr || 0,
                 };
             })
         );
@@ -1229,15 +1210,14 @@ export async function createFinalMatch(req: Request, res: Response): Promise<voi
             return;
         }
 
-        // Get top 2 teams from points table (sorted by points DESC, then NRR DESC)
+        // Get top 2 teams from points table (sorted by points DESC)
         const topTeams = await db
             .select({
                 teamId: pointsTable.teamId,
                 points: pointsTable.points,
-                nrr: pointsTable.nrr,
             })
             .from(pointsTable)
-            .orderBy(desc(pointsTable.points), desc(pointsTable.nrr))
+            .orderBy(desc(pointsTable.points))
             .limit(2);
 
         if (topTeams.length < 2) {

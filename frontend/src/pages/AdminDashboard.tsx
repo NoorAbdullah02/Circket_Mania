@@ -512,8 +512,7 @@ export default function AdminDashboard() {
 
     const lineData = stats?.teamPerformance ? stats.teamPerformance.map((t: any) => ({
         name: t.team.substring(0, 3).toUpperCase(),
-        points: t.points,
-        NRR: t.nrr
+        points: t.points
     })) : [];
 
     return (
